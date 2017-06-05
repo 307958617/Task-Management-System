@@ -1,0 +1,38 @@
+.thumbnail{
+  padding: 0;
+  position: relative;
+  .control-bar {
+    background-color: rgba(66, 217, 49, 0.5);
+    position: absolute;
+    width: 100%;
+    color: #d94316;
+    height: 30px;
+    line-height: 30px;
+    border:0;
+    padding-right: 5px;
+    display: none;
+    button {
+      border:none;
+      background-color: transparent;
+      float: right;
+    }
+  }
+  .caption {
+    padding: 0;
+  }
+}
+.thumbnail:hover {
+  .control-bar {
+    display: block;
+  }
+}
+
+label[for="createTask"].control-label {
+  font-size: 35px;
+  margin-top: -17px;
+  text-align: left;
+}
+
+.icon-cell {
+  width: 22px;
+}

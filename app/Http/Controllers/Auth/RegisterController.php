@@ -85,12 +85,4 @@ class RegisterController extends Controller
         Auth::login($user);//登录
         return redirect('/home');//跳转
     }
-
-//    protected function attemptLogin(Request $request)//改方法是在Illuminate\Foundation\Auth\AuthenticatesUsers里面的，用来注册成功后登录的方法
-//    {
-//        $credentials = array_merge($this->credentials($request),['is_active'=>'T']);//这里在就增加了一个登录的条件，即['is_active'=>'T']
-//        return $this->guard()->attempt(
-//            $credentials, $request->has('remember')
-//        );
-//    }
 }

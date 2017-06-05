@@ -20,3 +20,5 @@ Auth::routes();
 Route::get('/home', 'HomeController@index')->name('home');
 
 Route::get('/verify/{token}','Auth\RegisterController@verify')->name('verify.register');
+
+Route::resource('project','ProjectController');

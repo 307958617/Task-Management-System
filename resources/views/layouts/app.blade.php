@@ -12,6 +12,7 @@
 
     <!-- Styles -->
     <link href="{{ asset('css/app.css') }}" rel="stylesheet">
+    @yield('css')
 </head>
 <body>
     <div id="app">
@@ -71,10 +72,18 @@
             </div>
         </nav>
 
+        <div class="container">
+            @include('flash::message')
+        </div>
         @yield('content')
     </div>
 
     <!-- Scripts -->
     <script src="{{ asset('js/app.js') }}"></script>
+    @yield('js')
+    <script>
+        $('#flash-overlay-modal').modal();//用于显示模板
+        $('div.alert').not('.alert-important').delay(3000).fadeOut(350);//用于控制显示时间
+    </script>
 </body>
 </html>
