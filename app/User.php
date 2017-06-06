@@ -31,4 +31,9 @@ class User extends Authenticatable
     {
         return $this->hasMany('App\Project');
     }
+
+    public function tasks()
+    {
+        return $this->hasManyThrough('App\Task','App\Project');//表示User通过Project间接拥有任务
+    }
 }

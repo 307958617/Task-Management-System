@@ -510,3 +510,275 @@
             return back();
         }
     }
+# 步骤四、实现项目所属任务的增加、删除、修改、显示功能：
+## 1、设计任务表tasks也叫数据库迁移文件，以及定义该表与projects表之间的关系：
+### ①、执行如下命令生成Task Model的同时生成相应的数据库迁移文件：
+    php artisan make:model Task -m
+### ②、修改刚刚生成的数据库迁移文件create_tasks_table.php内容如下：
+    public function up()
+    {
+        Schema::create('tasks', function (Blueprint $table) {
+            $table->increments('id');
+            $table->unsignedInteger('project_id');//任务隶属哪个项目的id
+            $table->string('name');//任务名称
+            $table->string('description');//任务描述内容
+            $table->string('completed')->default('F');//任务完成情况，默认未完成
+            $table->timestamps();
+        });
+    }
+### ③、在刚刚生成的Task Model里面定义tasks表与projects表之间的关联关系：
+    public function project()
+    {
+        return $this->belongsTo('App\Project');//任务是属于某个项目的
+    }
+### ④、在Project Model里面定义projects表与tasks表之间的关联关系：
+    public function tasks()
+    {
+        return $this->hasMany('App\Task');
+    }
+### ⑤、！！还需要在User Model里面定义users与tasks表之间的关联关系：
+    public function tasks()
+    {
+        return $this->hasManyThrough('App\Task','App\Project');//表示User通过Project间接拥有任务Task
+    }
+## 2、创建views\projects\show.blade.php为显示当前项目的所有任务,以及创建，编辑，修改，删除任务的页面，内容为：
+### ①、views\projects\show.blade.php用来显示当前项目的任务，并在里面添任务及操作任务,内容为：
+     @extends('layouts.app')
+     @section('css')
+         <link href="https://cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.css" rel="stylesheet">
+     @endsection
+     @section('content')
+         <div class="container">
+             @include('tasks._createTaskForm')
+             <ul id="myTab" class="nav nav-tabs">
+                 <li class="active">
+                     <a href="#todo" data-toggle="tab">未完成任务</a>
+                 </li>
+                 <li>
+                     <a href="#done" data-toggle="tab">已完成任务</a>
+                 </li>
+             </ul>
+             <div id="myTabContent" class="tab-content">
+                 <div class="tab-pane fade in active" id="todo">
+                     <table class="table table-striped">
+                         <tbody>
+                         @foreach($todo as $task)
+                             <tr>
+                                 <td class="title-cell">{{ $task->updated_at->diffForHumans() }}&nbsp;&nbsp;&nbsp;&nbsp;{{ $task->name }}</td>
+                                 <td class="icon-cell">@include('tasks._checkTaskForm')</td>
+                                 <td class="icon-cell">@include('tasks._editTaskModel')</td>
+                                 <td class="icon-cell">@include('tasks._deleteTaskForm')</td>
+                             </tr>
+                         @endforeach
+                         </tbody>
+                     </table>
+                 </div>
+                 <div class="tab-pane fade" id="done">
+                     <table class="table table-striped">
+                         <tbody>
+                         @foreach($done as $task)
+                             <tr>
+                                 <td class="title-cell">{{ $task->updated_at->diffForHumans() }}&nbsp;&nbsp;&nbsp;&nbsp;{{ $task->name }}</td>
+                             </tr>
+                         @endforeach
+                         </tbody>
+                     </table>
+                 </div>
+             </div>
+         </div>
+     @endsection
+     
+     @section('js')
+         <script>
+             $(document).ready(function () {
+                 if(window.localStorage.active == '已完成任务'){
+                     $('#myTab a[href="#done"]').tab('show');
+                 }
+                 $('a[data-toggle="tab"]').on('show.bs.tab', function (e) {
+                     var activeTab = $(e.target).text();
+                     window.localStorage.active = activeTab
+                 })
+             });
+         </script>
+     @endsection
+### ②、创建views\tasks\index.blade.php用来显示所有任务，内容为：
+    @extends('layouts.app')
+    @section('content')
+        <div class="container">
+            <h1>所有任务</h1>
+            <ul id="myTab" class="nav nav-tabs">
+                <li class="active">
+                    <a href="#todo" data-toggle="tab">未完成任务</a>
+                </li>
+                <li>
+                    <a href="#done" data-toggle="tab">已完成任务</a>
+                </li>
+            </ul>
+            <div id="myTabContent" class="tab-content">
+                <div class="tab-pane fade in active" id="todo">
+                    <table class="table table-striped">
+                        <tbody>
+                        @foreach($todo as $task)
+                            <tr>
+                                <td class="title-cell">{{ $task->updated_at->diffForHumans() }}&nbsp;&nbsp;&nbsp;&nbsp;{{ $task->name }}</td>
+                                <td class="title-cell">{{ $task->project->name }}</td>
+                                <td class="icon-cell">@include('tasks._checkTaskForm')</td>
+                                <td class="icon-cell">@include('tasks._editTaskModel')</td>
+                                <td class="icon-cell">@include('tasks._deleteTaskForm')</td>
+                            </tr>
+                        @endforeach
+                        {{ $todo->links() }}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="tab-pane fade" id="done">
+                    <table class="table table-striped">
+                        <tbody>
+                        @foreach($done as $task)
+                            <tr>
+                                <td class="title-cell">{{ $task->updated_at->diffForHumans() }}&nbsp;&nbsp;&nbsp;&nbsp;{{ $task->name }}</td>
+                            </tr>
+                        @endforeach
+                        {{ $done->links() }}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    @endsection
+### ③、views\tasks\_createTaskForm.blade.php，即创建任务功能的表单内容为：
+    {{--{!! Form::open(['route' => ['task.store','id'=> $project->id ],'class'=>'form-horizontal']) !!}--}}
+    <form action="{{ route('task.store',['id'=> $project->id]) }}" method="post" class="form-horizontal">
+        {{ csrf_field() }}
+        <div class="form-group">
+            <label for="createTask" class="col-md-3 control-label">{{ $project->name }}</label>
+            <div class="col-md-7">
+                <input type="text" class="form-control" name="name" placeholder="你需要添加任务吗？">
+            </div>
+            <div class="col-sm-1">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa fa-plus"></i>
+                </button>
+            </div>
+        </div>
+    </form>
+    {{--{!! Form::close() !!}--}}
+### ④、views\tasks\_checkTaskForm.blade.php，即将任务标记完成的功能表单,内容为：
+    {{--{!! Form::open(['route' => ['task.check',$task->id],'method'=>'PATCH']) !!}--}}
+    <form action="{{ route('task.check',$task->id) }}" method="post">//这里的method="post"仍然不能少啊
+        {{ method_field('PATCH') }}
+        {{ csrf_field() }}
+        <button type="submit" class="btn btn-success btn-xs">
+            <i class="fa fa-check-square-o"></i>
+        </button>
+    </form>
+    {{--{!! Form::close() !!}--}}
+### ⑤、views\tasks\_editTaskModel.blade.php,编辑任务，内容为：
+    <button class="btn btn-xs btn-primary" data-toggle="modal" data-target="#editModal-{{$task->id}}">
+        <i class="fa fa-cog"></i>
+    </button>
+    <!-- 模态框（Modal） -->
+    <div class="modal fade" id="editModal-{{$task->id}}" tabindex="-1" role="dialog" aria-labelledby="editModal-{{$task->id}}-Label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                    <h4 class="modal-title" id="myModalLabel">编辑任务</h4>
+                </div>
+                {{--{!! Form::model($task,['route'=>['task.update',$task->id],'files'=>true,'method'=>'PATCH']) !!}--}}
+                <form action="{{ route('task.update',$task->id) }}" method="POST" enctype="multipart/form-data" >
+                    {{ method_field('PATCH') }}
+                    {{ csrf_field() }}
+                    <div class="modal-body">
+                        <div class="form-group">
+                            {{--{!! Form::label('title', '任务名称：', ['class' => 'control-label']) !!}--}}
+                            {{--{!! Form::text('title', null, ['class' => 'form-control']) !!}--}}
+                            <label for="name" class="control-label">任务名称：</label>
+                            <input type="text" id="name" name="name" class="form-control" value="{{ $task->name }}">
+                        </div>
+                        <div class="form-group">
+                            {{--{!! Form::label('projectList', '所属项目：', ['class' => 'control-label']) !!}--}}
+                            {{--{!! Form::select('projectList',$projectList,null,['class' => 'form-control']) !!}--}}
+                            <label for="projectList" class="control-label">所属项目：</label>
+                            <select name="projectList" id="projectList" class="form-control">
+                                @foreach($projectList as $key=>$pro)
+                                    <option {{ $project->id==$key?"selected":"" }} value="{{ $key }}">{{ $pro }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        {{--{!! Form::submit('提交更改',['class'=>'btn btn-primary']) !!}--}}
+                        <button type="submit" class="btn btn-primary">提交更改</button>
+                    </div>
+                </form>
+                {{--{!! Form::close() !!}--}}
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal -->
+    </div>
+### ⑥、views\tasks\_deleteTaskForm.blade.php,删除任务，内容为：
+    {{--{!! Form::open(['route'=>['tasks.destroy',$task->id],'method'=>'DELETE']) !!}--}}
+    <form action="{{ route('task.destory',$task->id) }}" method="post">
+        {{ method_field('DELETE') }}
+        {{ csrf_field() }}
+        <button class="btn btn-xs btn-danger">
+            <i class="fa fa-close"></i>
+        </button>
+    </form>
+    {{--{!! Form::close() !!}--}}
+## 3、为Task Model创建名为：TaskController控制器并创建资源路由，执行如下命令：
+    php artisan make:controller TaskController --resource
+## 4、在web.php路由文件里面添加资源路由：
+    Route::patch('task/{task}/check',['as'=>'task.check','uses'=>'TaskController@check']);
+    
+    Route::resource('task','TaskController');
+## 5、修改ProjectController.php里面的show()方法，用来显示具体项目下的所有任务和添加任务，分为‘未完成’和‘已完成’：
+    public function show($id)
+    {
+        $project = Auth::user()->projects()->where('id',$id)->first();//获取当前用户当前项目
+        $projectList = Auth::user()->projects()->pluck('name','id');//获取当前用户项目的键值对数组
+        $todo = $project->tasks()->where('completed','F')->get();//获取未完成任务
+        $done = $project->tasks()->where('completed','T')->get();//获取已完成任务
+        return view('projects.show',compact('project','projectList','todo','done'));
+    }
+## 6、修改TaskController.php里面的index()方法，用来显示所有任务，内容为：
+    public function index()
+    {
+        $projectList = Auth::user()->projects()->pluck('name','id');
+        $todo = Auth::user()->tasks()->where('completed','F')->paginate(15);
+        $done = Auth::user()->tasks()->where('completed','T')->paginate(15);
+        return view('tasks.index',compact('todo','done','projectList'));
+    }
+## 7、修改TaskController.php里面的store()方法，用来添加任务，内容为：
+    public function store(Request $request)
+    {
+        Task::create([
+            'name'=> $request->name,
+            'project_id' => $request->id
+        ]);
+        return back();
+    }
+## 8、在TaskController.php里面创建check()方法，用来标记完成任务，内容为：
+    public function check($id)
+    {
+        $task = Task::findOrFail($id);
+        $task->completed = 'T';
+        $task->save();
+        return back();
+    }
+## 9、修改TaskController.php里面的store()方法，用来更新(编辑)任务，内容为：
+    public function update(Request $request, $id)
+    {
+        $task = Task::findOrFail($id);
+        $task->update([
+            'name'=>$request->name,
+            'project_id'=>$request->projectList
+        ]);
+        return back();
+    }
+## 10、修改TaskController.php里面的destroy()方法，用来删除任务，内容为：
+    public function destroy($id)
+    {
+        Task::findOrFail($id)->delete();
+        return back();
+    }

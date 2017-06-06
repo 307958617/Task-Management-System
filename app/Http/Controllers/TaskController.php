@@ -2,30 +2,23 @@
 
 namespace App\Http\Controllers;
 
-use App\Repositories\projectRepository;
+use App\Task;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
-class ProjectController extends Controller
+class TaskController extends Controller
 {
     /**
      * Display a listing of the resource.
      *
      * @return \Illuminate\Http\Response
      */
-
-    protected $repo;
-
-    public function __construct(projectRepository $repo)
-    {
-        $this->middleware('auth');
-        $this->repo = $repo;
-    }
-
     public function index()
     {
-        $projects = $this->repo->projectsList();
-        return view('projects.index',compact('projects'));
+        $projectList = Auth::user()->projects()->pluck('name','id');
+        $todo = Auth::user()->tasks()->where('completed','F')->paginate(15);
+        $done = Auth::user()->tasks()->where('completed','T')->paginate(15);
+        return view('tasks.index',compact('todo','done','projectList'));
     }
 
     /**
@@ -46,11 +39,12 @@ class ProjectController extends Controller
      */
     public function store(Request $request)
     {
-        $this->repo->createProject($request);
+        Task::create([
+            'name'=> $request->name,
+            'project_id' => $request->id
+        ]);
         return back();
     }
-
-
 
     /**
      * Display the specified resource.
@@ -60,11 +54,7 @@ class ProjectController extends Controller
      */
     public function show($id)
     {
-        $project = Auth::user()->projects()->where('id',$id)->first();//获取当前用户当前项目
-        $projectList = Auth::user()->projects()->pluck('name','id');//获取当前用户任务的键值对数组
-        $todo = $project->tasks()->where('completed','F')->get();//获取未完成任务
-        $done = $project->tasks()->where('completed','T')->get();//获取已完成任务
-        return view('projects.show',compact('project','projectList','todo','done'));
+        //
     }
 
     /**
@@ -87,7 +77,11 @@ class ProjectController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $this->repo->updateProject($request,$id);
+        $task = Task::findOrFail($id);
+        $task->update([
+            'name'=>$request->name,
+            'project_id'=>$request->projectList
+        ]);
         return back();
     }
 
@@ -99,7 +93,15 @@ class ProjectController extends Controller
      */
     public function destroy($id)
     {
-        $this->repo->destroyProject($id);
+        Task::findOrFail($id)->delete();
+        return back();
+    }
+
+    public function check($id)
+    {
+        $task = Task::findOrFail($id);
+        $task->completed = 'T';
+        $task->save();
         return back();
     }
 }
