@@ -404,3 +404,109 @@
     {
         $this->middleware('auth');//只有登录才能看见
     }
+## 11、对ProjectController代码进行重构，使用repository来实现：
+### ①、因为laravel没有在底层封装repository命令，所以我们自己创建，App\Repositories文件夹用来放置所有的repository:
+### ②、在App\Repositories里面创建一个projectRepository.php,内容为：
+    <?php
+    namespace App\Repositories;//注意这里命名空间一定要对
+    
+    use App\Project;
+    use Illuminate\Support\Facades\Auth;
+    use Image;
+    class projectRepository
+    {
+        public function projectsList()
+        {
+            return Auth::user()->projects()->get();
+        }
+    
+        public function createProject($request)
+        {
+            return Auth::user()->projects()->create([
+                'name' => $request->name,
+                'thumbnail' => $this->thumbnail($request)
+            ]);
+        }
+    
+        public function updateProject($request,$id)
+        {
+            $project = Project::findOrFail($id);
+            $project->name = $request->name;
+            if($request->hasFile('thumbnail')){
+                $project->thumbnail = $this->thumbnail($request);
+            }
+            $project->save();
+        }
+    
+        public function destroyProject($id)
+        {
+            return Project::findOrFail($id)->delete();
+        }
+    
+        public function thumbnail($request)
+        {
+    
+            if($request->hasFile('thumbnail')){
+                $file = $request->thumbnail;
+                $name = str_random(10).'.jpg';
+                $path = public_path('pictures/thumbnails/').$name;
+                Image::make($file)->resize(300, 100)->save($path);
+                return $name;
+            }
+            return $name='default.jpg';
+        }
+    }
+### ③、在ProjectController里面引入刚刚创建的projectRepository:
+    
+    use App\Repositories\projectRepository;//这里一定不能少
+    
+    protected $repo;
+    
+    public function __construct(projectRepository $repo)
+    {
+        $this->middleware('auth');
+        $this->repo = $repo;
+    }
+### ④、重构后的ProjectController代码如下（十分之简洁）：
+    <?php
+    
+    namespace App\Http\Controllers;
+   
+    use App\Repositories\projectRepository;
+    use Illuminate\Http\Request;
+    
+    class ProjectController extends Controller
+    {
+        
+        protected $repo;
+    
+        public function __construct(projectRepository $repo)
+        {
+            $this->middleware('auth');
+            $this->repo = $repo;
+        }
+    
+        public function index()
+        {
+            $projects = $this->repo->projectsList();
+            return view('projects.index',compact('projects'));
+        }     
+        
+        public function store(Request $request)
+        {
+            $this->repo->createProject($request);
+            return back();
+        }
+    
+        public function update(Request $request, $id)
+        {
+            $this->repo->updateProject($request,$id);
+            return back();
+        }
+    
+        public function destroy($id)
+        {
+            $this->repo->destroyProject($id);
+            return back();
+        }
+    }

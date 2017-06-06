@@ -2,10 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Project;
-use Image;
+use App\Repositories\projectRepository;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class ProjectController extends Controller
 {
@@ -15,14 +13,17 @@ class ProjectController extends Controller
      * @return \Illuminate\Http\Response
      */
 
-    public function __construct()
+    protected $repo;
+
+    public function __construct(projectRepository $repo)
     {
         $this->middleware('auth');
+        $this->repo = $repo;
     }
 
     public function index()
     {
-        $projects = Auth::user()->projects()->get();
+        $projects = $this->repo->projectsList();
         return view('projects.index',compact('projects'));
     }
 
@@ -44,25 +45,11 @@ class ProjectController extends Controller
      */
     public function store(Request $request)
     {
-        Auth::user()->projects()->create([
-            'name' => $request->name,
-            'thumbnail' => $this->thumbnail($request)
-        ]);
+        $this->repo->createProject($request);
         return back();
     }
 
-    public function thumbnail($request)
-    {
 
-        if($request->hasFile('thumbnail')){
-            $file = $request->thumbnail;
-            $name = str_random(10).'.jpg';
-            $path = public_path('pictures/thumbnails/').$name;
-            Image::make($file)->resize(300, 100)->save($path);
-            return $name;
-        }
-        return $name='default.jpg';
-    }
 
     /**
      * Display the specified resource.
@@ -95,12 +82,7 @@ class ProjectController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $project = Project::findOrFail($id);
-        $project->name = $request->name;
-        if($request->hasFile('thumbnail')){
-            $project->thumbnail = $this->thumbnail($request);
-        }
-        $project->save();
+        $this->repo->updateProject($request,$id);
         return back();
     }
 
@@ -112,7 +94,7 @@ class ProjectController extends Controller
      */
     public function destroy($id)
     {
-        Project::findOrFail($id)->delete();
+        $this->repo->destroyProject($id);
         return back();
     }
 }
