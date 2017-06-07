@@ -1,4 +1,7 @@
 @extends('layouts.app')
+@section('css')
+    <link href="https://cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.css" rel="stylesheet">
+@endsection
 @section('content')
     <div class="container">
         <h1>所有任务</h1>
@@ -23,7 +26,7 @@
                             <td class="icon-cell">@include('tasks._deleteTaskForm')</td>
                         </tr>
                     @endforeach
-                    {{ $todo->links() }}
+                    {{ $todo->links() }} <!-- 分页导航 -->
                     </tbody>
                 </table>
             </div>
@@ -35,7 +38,7 @@
                             <td class="title-cell">{{ $task->updated_at->diffForHumans() }}&nbsp;&nbsp;&nbsp;&nbsp;{{ $task->name }}</td>
                         </tr>
                     @endforeach
-                    {{ $done->links() }}
+                    {{ $done->links() }} <!-- 分页导航 -->
                     </tbody>
                 </table>
             </div>

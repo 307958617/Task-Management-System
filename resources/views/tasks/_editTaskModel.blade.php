@@ -26,7 +26,7 @@
                         <label for="projectList" class="control-label">所属项目：</label>
                         <select name="projectList" id="projectList" class="form-control">
                             @foreach($projectList as $key=>$pro)
-                                <option {{ $project->id==$key?"selected":"" }} value="{{ $key }}">{{ $pro }}</option>
+                                <option {{ $task->project->id==$key?"selected":"" }} value="{{ $key }}">{{ $pro }}</option>
                             @endforeach
                         </select>
                     </div>

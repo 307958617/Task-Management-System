@@ -603,6 +603,9 @@
      @endsection
 ### ②、创建views\tasks\index.blade.php用来显示所有任务，内容为：
     @extends('layouts.app')
+    @section('css')
+        <link href="https://cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.css" rel="stylesheet">
+    @endsection
     @section('content')
         <div class="container">
             <h1>所有任务</h1>
@@ -627,7 +630,7 @@
                                 <td class="icon-cell">@include('tasks._deleteTaskForm')</td>
                             </tr>
                         @endforeach
-                        {{ $todo->links() }}
+                        {{ $todo->links() }} <!-- 分页导航 -->
                         </tbody>
                     </table>
                 </div>
@@ -639,7 +642,7 @@
                                 <td class="title-cell">{{ $task->updated_at->diffForHumans() }}&nbsp;&nbsp;&nbsp;&nbsp;{{ $task->name }}</td>
                             </tr>
                         @endforeach
-                        {{ $done->links() }}
+                        {{ $done->links() }} <!-- 分页导航 -->
                         </tbody>
                     </table>
                 </div>
@@ -702,7 +705,7 @@
                             <label for="projectList" class="control-label">所属项目：</label>
                             <select name="projectList" id="projectList" class="form-control">
                                 @foreach($projectList as $key=>$pro)
-                                    <option {{ $project->id==$key?"selected":"" }} value="{{ $key }}">{{ $pro }}</option>
+                                    <option {{ $task->project->id==$key?"selected":"" }} value="{{ $key }}">{{ $pro }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -782,3 +785,110 @@
         Task::findOrFail($id)->delete();
         return back();
     }
+## 11、将Carbon显示的时间设置为中文，可以在 app/Providers/AppServiceProvider.php 的 boot() 方法中添加下面的代码来设置全局本地化：
+    public function boot()
+    {
+        \Carbon\Carbon::setLocale('zh');
+    }
+# 设置导航栏链接菜单：在导航栏添加对应的链接菜单，而且要判断是否是当前选中的状态来分别配置css样式，views\layouts\app.blade.php里面的左边导航里代码如下：
+    <!-- Left Side Of Navbar -->
+    <ul class="nav navbar-nav">
+        <li class="{{ url()->current()==route('project.index')?'active':'' }}"><a href="{{ route('project.index') }}">Project</a></li>
+        <li class="{{ url()->current()==route('task.index')?'active':'' }}"><a href="{{ route('task.index') }}">Task</a></li>
+    </ul>
+# 步骤五、实现表单数据验证功能：
+## 1、实现项目添加表单的验证功能：
+### ①创建一个createProjectRequest的验证文件，文件位于app\Http\Requests里面：
+    php artisan make:request createProjectRequest
+### ②修改createProjectRequest的内容为：
+    <?php
+    
+    namespace App\Http\Requests;
+    
+    use Illuminate\Foundation\Http\FormRequest;
+    
+    class createProjectRequest extends FormRequest
+    {    
+        public function authorize()
+        {
+            return true;//这里需要改为true
+        }
+           
+        public function rules()
+        {
+            return [
+                'name' => 'required|unique:projects',//不能为空，且在projects表里面不能重复
+                'thumbnail' => 'image'//必须是图片
+            ];
+        }
+    
+        public function messages()//对应的错误提示信息
+        {
+            return [
+                'name.required' => '项目名称不能为空',
+                'name.unique' => '该项目名称已存在，请换一个名称',
+                'thumbnail.image' => '缩略图只能是图片格式'
+            ];
+        }
+    }
+### ③进入ProjectController里面修改唯一一个地方即可实现验证功能：
+    use App\Http\Requests\createProjectRequest;//这里不要忘记引用一下
+    public function store(createProjectRequest $request)//这是唯一一处修改的地方，不过不要忘记use一下
+    {
+        $this->repo->createProject($request);
+        return back();
+    }
+## 2、实现项目修改(编辑)表单的验证功能，可以直接用createProjectRequest：
+### 进入ProjectController里面修改唯一一个地方即可实现验证功能：
+    public function update(createProjectRequest $request, $id)//这是唯一一处修改的地方
+    {
+        $this->repo->updateProject($request,$id);
+        return back();
+    }
+## 3、实现增加任务的表单验证功能：
+### ①创建一个createTaskRequest的验证文件，文件位于app\Http\Requests里面：
+        php artisan make:request createTaskRequest    
+### ②修改createTaskRequest的内容为：    
+    <?php
+    namespace App\Http\Requests;
+    
+    use Illuminate\Foundation\Http\FormRequest;
+    
+    class createTaskRequest extends FormRequest
+    {
+
+        public function authorize()
+        {
+            return true;
+        }
+
+        public function rules()
+        {
+            return [
+                'name' => 'required'
+            ];
+        }
+    
+        public function messages()
+        {
+            return [
+                'name.required' => '任务名称不能为空'
+            ];
+        }
+    }
+### ③进入TaskController里面修改唯一一个地方即可实现验证功能：
+    use App\Http\Requests\createTaskRequest;//不要忘记在上面引用一下
+    public function store(createTaskRequest $request)//这是唯一一处修改的地方
+    {
+        Task::create([
+            'name'=> $request->name,
+            'project_id' => $request->id
+        ]);
+        return back();
+    }
+## 4、如果想要显示提示信息，需要在相应的位置加入如下代码：
+    @if ($errors->has('name'))  //这里的'name'为需要验证的字段名，按需修改即可
+        <span class="help-block alert-danger">
+            <strong>{{ $errors->first('name') }}</strong>
+        </span>
+    @endif

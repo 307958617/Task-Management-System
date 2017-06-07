@@ -37,7 +37,8 @@
                 <div class="collapse navbar-collapse" id="app-navbar-collapse">
                     <!-- Left Side Of Navbar -->
                     <ul class="nav navbar-nav">
-                        &nbsp;
+                        <li class="{{ url()->current()==route('project.index')?'active':'' }}"><a href="{{ route('project.index') }}">Project</a></li>
+                        <li class="{{ url()->current()==route('task.index')?'active':'' }}"><a href="{{ route('task.index') }}">Task</a></li>
                     </ul>
 
                     <!-- Right Side Of Navbar -->
