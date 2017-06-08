@@ -77,6 +77,7 @@
             @include('flash::message')
         </div>
         @yield('content')
+        @include('layouts.footer')
     </div>
 
     <!-- Scripts -->

@@ -818,7 +818,7 @@
         {
             return [
                 'name' => 'required|unique:projects',//不能为空，且在projects表里面不能重复
-                'thumbnail' => 'image'//必须是图片
+                'thumbnail' => 'image|dimentions:min_width=261,min_height=98'//必须是图片,且图片大小最小为261*98
             ];
         }
     
@@ -889,6 +889,116 @@
 ## 4、如果想要显示提示信息，需要在相应的位置加入如下代码：
     @if ($errors->has('name'))  //这里的'name'为需要验证的字段名，按需修改即可
         <span class="help-block alert-danger">
-            <strong>{{ $errors->first('name') }}</strong>
+            <strong>{{ $errors->first('name') }}</strong>//这是只显示关于name字段的一条记录
         </span>
     @endif
+    或显示多条记录：
+    @if ($errors->has('name'))
+        <span class="help-block alert-danger">
+            @foreach($errors->get('name') as $error) //显示关于name字段的多条记录
+                <li>{{ $error }}</li>  
+            @endforeach
+        </span>
+    @endif
+    或显示所有错误提示则用下面代码：
+    @if($errors->any())
+        <ul class = "alert alert-danger">
+            @foreach($errors->all() as $error) //显示所有记录
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    @endif
+# 步骤六、实现view composer功能(即如何实现向一个公用的模块传递数据)：
+## 1、在views\layouts目录下创建一个名为footer.blade.php的公用模板，用来作为网站的底部显示一些数据，内容为：
+    <div class="footer" style="position: absolute;bottom: 0;height: 60px;line-height: 60px;width: 100%;background-color: #ffffff;">
+        <div class="container">
+            当前共有  个任务，已完成 个，未完成 个。
+        </div>
+    </div>
+## 2、在layouts\app.blade.php中相应的地方引入该模板：
+    @include('layouts.footer')
+## 3、思考如何将任务总数及完成和未完成数据传递到footer.blade.php里面呢？
+### 思考①、首先不可能到每个Controller里面写代码然后传递给每个视图；
+### 思考②、如果直接显示为：当前共有{{$total}}个任务，已完成{{$doneCount}}个，未完成{{$todoCount}}个就完美了，但是有个问题就是要报错，因为找不到这些变量怎么解决？
+### 思考③、如果在`系统启动之后`就能拿到$total这些变量，然后传递给layouts.footer视图那么就完美了
+### ④、那么就考虑到在app\Providers\AppServiceProvider.php里面的boot()方法里写代码，然后传递给视图就可以了，具体代码如下：
+### ⑤、也许需要传递数据的视图不只一个，所以我们也可以单独为view composer创建一个provider，执行如下命令：
+    php artisan make:provider ComposerServiceProvider
+### ⑤-1、创建好ComposerServiceProvider之后系统还是找不到他，需要到config\app.blade.php配置文件里面添加该provider进行注册：
+    App\Providers\ComposerServiceProvider::class,
+### ⑥、到创建好的ComposerServiceProvider里面的boot()方法里面创建一个view composer，内容为：
+    方法一：
+    view()->share('key','value');//这个适合数量比较少的情况
+    方法二：
+    view()->composer('layouts.footer',function($view){ //layouts.footer为需要传递给数据的视图
+        $view->with('total',\App\Task::total())//这是一种情况，\App\Task::total()是Task Model里面的得到total数据的一个方法
+    })；
+    方法三：//为了规范方法二，可以如下实现最常用，推荐用：
+    view()->composer('layouts.footer','App\Http\ViewComposers\TaskCountComposer@compose')//这就是用'App\Http\ViewComposers\TaskComposer@compose'代替上面的回调函数，同时需要创建TaskComposer及compose()方法，这个方法是默认的在这里可以不填的
+### ⑥-1、然后创建App\Http\ViewComposers\TaskCountComposer，内容为：
+    <?php
+    namespace App\Http\ViewComposers;
+    
+    use Illuminate\View\View;
+    
+    class TaskCountComposer
+    {
+        public function compose(View $view)
+        {
+            $view->with([
+                'total' => 20,
+                'doneCount' => 10,
+                'todoCount' => 10,
+            ]);
+        }
+    }
+### ⑥-2、上面一步的数据都是直接输入的，如何从数据库提取数据呢：
+#### 首先、创建一个App\Repositories\taskRepository.php，内容为：
+    <?php
+    namespace App\Repositories;
+    
+    use App\Task;
+    
+    class taskRepository
+    {
+        public function total()
+        {
+            $total = Task::all()->count();
+            return $total;
+        }
+    
+        public function todoCount()
+        {
+            $todoCount = Task::where('completed','F')->count();
+            return $todoCount;
+        }
+    
+        public function doneCount()
+        {
+            $doneCount = Task::where('completed','T')->count();
+            return $doneCount;
+        }
+    }
+#### 其次、到App\Http\ViewComposers\TaskCountComposer引入taskRepository,引入之后TaskCountComposer.php的代码为：
+    <?php
+    namespace App\Http\ViewComposers;
+    
+    use App\Repositories\taskRepository;
+    use Illuminate\View\View;
+    
+    class TaskCountComposer
+    {
+        public function __construct(taskRepository $task)
+        {
+            $this->task = $task;
+        }
+    
+        public function compose(View $view)
+        {
+            $view->with([
+                'total' => $this->task->total(),
+                'doneCount' => $this->task->doneCount(),
+                'todoCount' => $this->task->todoCount(),
+            ]);
+        }
+    }
