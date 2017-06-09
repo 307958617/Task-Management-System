@@ -1002,3 +1002,33 @@
             ]);
         }
     }
+# 步骤七、实现图表统计功能：
+## 1、首先创建一个显示图表的视图文件，位于views\charts目录下面index.blade.php
+## 2、在web.php路由文件里面为上面的视图分配一个路由：
+    Route::get('chart','ChartController@index')->name('chart.index');
+## 3、创建一个ChartController，执行如下命令：
+    php artisan make:controller ChartController
+## 4、ChartController内容为：
+    <?php
+    
+    namespace App\Http\Controllers;
+    
+    use Illuminate\Http\Request;
+    
+    class ChartController extends Controller
+    {
+        public function index()
+        {
+            return view('charts.index');
+        }
+    }
+## 5、导航条添加chart链接，指向charts\index.blade.php,即修改layouts\app.blade.php：
+    <!-- Left Side Of Navbar -->
+    <ul class="nav navbar-nav">
+        <li class="{{ url()->current()==route('chart.index')?'active':'' }}"><a href="{{ route('chart.index') }}">Chart</a></li>
+    </ul>
+## 6、charts\index.blade.php的具体图表统计实现代码，我使用的是echarts参考文档在http://echarts.baidu.com/index.html：
+    
+    
+    
+    

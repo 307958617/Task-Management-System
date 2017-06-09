@@ -26,3 +26,5 @@ Route::resource('project','ProjectController');
 Route::patch('task/{task}/check',['as'=>'task.check','uses'=>'TaskController@check']);
 
 Route::resource('task','TaskController');
+
+Route::get('chart','ChartController@index')->name('chart.index');

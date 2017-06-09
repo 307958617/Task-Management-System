@@ -39,6 +39,7 @@
                     <ul class="nav navbar-nav">
                         <li class="{{ url()->current()==route('project.index')?'active':'' }}"><a href="{{ route('project.index') }}">Project</a></li>
                         <li class="{{ url()->current()==route('task.index')?'active':'' }}"><a href="{{ route('task.index') }}">Task</a></li>
+                        <li class="{{ url()->current()==route('chart.index')?'active':'' }}"><a href="{{ route('chart.index') }}">Chart</a></li>
                     </ul>
 
                     <!-- Right Side Of Navbar -->
