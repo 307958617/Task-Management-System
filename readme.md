@@ -1013,13 +1013,27 @@
     
     namespace App\Http\Controllers;
     
+    use App\Repositories\projectRepository;
+    use App\Repositories\taskRepository;
     use Illuminate\Http\Request;
     
     class ChartController extends Controller
     {
+        protected $task,$project;
+        public function __construct(taskRepository $task,projectRepository $project)
+        {
+            $this->task = $task;
+            $this->project = $project;
+        }
         public function index()
         {
-            return view('charts.index');
+            $taskTotal = $this->task->total();
+            $todoCount = $this->task->todoCount();
+            $doneCount = $this->task->doneCount();
+            $projectTotal = $this->project->total();
+            $projectNameList = $this->project->projectNameList();
+            $projects = $this->project->projects();
+            return view('charts.index',compact('taskTotal','todoCount','doneCount','projectTotal','projectNameList','projects'));
         }
     }
 ## 5、导航条添加chart链接，指向charts\index.blade.php,即修改layouts\app.blade.php：
@@ -1028,7 +1042,542 @@
         <li class="{{ url()->current()==route('chart.index')?'active':'' }}"><a href="{{ route('chart.index') }}">Chart</a></li>
     </ul>
 ## 6、charts\index.blade.php的具体图表统计实现代码，我使用的是echarts参考文档在http://echarts.baidu.com/index.html：
+    @extends('layouts.app')
+    @section('css')
+        <!-- 通过cdn方式引入ECharts -->
+        <script src="https://cdn.bootcss.com/echarts/3.6.1/echarts.js"></script>
+    @endsection
+    @section('content')
+        <div class="container">
+            <div class="col-md-4">
+                <!-- 为 ECharts 柱状图 准备一个具备大小（宽高）的 DOM -->
+                <div id="pieChart" style="width: 100%;height: 300px"></div>
+            </div>
+            <div class="col-md-4">
+                <!-- 为 ECharts 柱状图 准备一个具备大小（宽高）的 DOM -->
+                <div id="barChart" style="width: 100%;height: 300px"></div>
+            </div>
+        </div>
+    @endsection
+    @section('js')
+        <script type="text/javascript">
+            // 基于准备好的dom，初始化echarts实例
+            var pieChart = echarts.init(document.getElementById('pieChart'));
+    
+            // 指定图表的配置项和数据
+            var pieChartOption = {
+                title : {
+                    text: '任务完成量统计图',
+                    subtext: '任务总数：'+ {{ $taskTotal }},
+                    x:'center'
+                },
+                tooltip : {
+                    trigger: 'item',
+                    formatter: "{a} <br/>{b} : {c} ({d}%)"
+                },
+                legend: {
+                    orient: 'horizontal',
+                    left: 'center',
+                    bottom:0,
+                    data: ['未完成任务','已完成任务']
+                },
+                series : [
+                    {
+                        name: '任务数',
+                        type: 'pie',
+                        radius : '55%',
+                        center: ['50%', '55%'],
+                        data:[
+                            {value:{{ $todoCount }}, name:'未完成任务'},
+                            {value:{{ $doneCount }}, name:'已完成任务'}
+                        ],
+                        itemStyle: {
+                            emphasis: {
+                                shadowBlur: 10,
+                                shadowOffsetX: 0,
+                                shadowColor: 'rgba(0, 0, 0, 0.5)'
+                            }
+                        }
+                    }
+                ]
+            };
+            // 使用刚指定的配置项和数据显示图表。
+            pieChart.setOption(pieChartOption);
     
     
     
+            // 下面是柱状图
+            var barChart = echarts.init(document.getElementById('barChart'));
+            var barChartOption = {
+                title : {
+                    text: '项目种类及相关完成情况',
+                    subtext: '项目总数：'+ {{ $projectTotal }},
+                    x:'center'
+                },
+                tooltip : {
+                    trigger: 'axis',
+                    axisPointer : {            // 坐标轴指示器，坐标轴触发有效
+                        type : 'shadow'        // 默认为直线，可选为：'line' | 'shadow'
+                    }
+                },
+                legend: {
+                    data:['任务总数','未完成','已完成'],
+                    bottom:0
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '8%',
+                    containLabel: true
+                },
+                xAxis : [
+                    {
+                        type : 'category',
+                        data : {!! $projectNameList !!}//如果还是不显示，就用{!! json_encode($projectNameList,JSON_UNESCAPED_UNICODE) !!}
+                    }
+                ],
+                yAxis : [
+                    {
+                        type : 'value'
+                    }
+                ],
+                series : [
+                    {
+                        name:'任务总数',
+                        type:'bar',
+                        data:{!! json_encode(TaskCountArray($projects)) !!},//这里必须要用json_encode()转吗
+                    },
+                    {
+                        name:'已完成',
+                        type:'bar',
+                        barWidth : 5,
+                        stack: '任务总数',
+                        data:{!! json_encode(DoneTaskCountArray($projects)) !!}
+                    },
+                    {
+                        name:'未完成',
+                        type:'bar',
+                        barWidth : 5,
+                        stack: '任务总数',
+                        data:{!! json_encode(TodoTaskCountArray($projects)) !!}
+                    }
+                ]
+            };
+            barChart.setOption(barChartOption);
+            
+            
+        </script>
+    @endsection
+## 6-1、有一个问题就是如何获得每个项目的任务数？好像是无从下手，请思考：
+### 思考①、如果我们从需要的结果考虑入手，直接用{{ TaskCountArray($projects) }},就可以得到如下数组就好了[1,2]，但是又要如何实现呢？
+### 思考②、那么TaskCountArray()这个函数放到哪里好呢，是不是需要全局比较好呢，那么就要用到helper全局函数来帮忙了
+### 手动创建TaskCountArray()这个全局函数，步骤如下：
+#### 1、在app目录下创建一个名为：Helper.php的帮助函数库，内容为：
+    <?php
+    
+    function TaskCountArray($projects)
+    {
+        $projectTaskCountArray = [];
+        foreach($projects as $project){
+            $projectTaskCount = $project->tasks()->count();
+            array_push($projectTaskCountArray,$projectTaskCount);
+        }
+        return $projectTaskCountArray;
+    }
+    
+    function TodoTaskCountArray($projects)
+    {
+        $projectTaskCountArray = [];
+        foreach($projects as $project){
+            $projectTaskCount = $project->tasks()->where('completed','F')->count();
+            array_push($projectTaskCountArray,$projectTaskCount);
+        }
+        return $projectTaskCountArray;
+    }
+    
+    function DoneTaskCountArray($projects)
+    {
+        $projectTaskCountArray = [];
+        foreach($projects as $project){
+            $projectTaskCount = $project->tasks()->where('completed','T')->count();
+            array_push($projectTaskCountArray,$projectTaskCount);
+        }
+        return $projectTaskCountArray;
+    }
+#### 2、如何使Laravel识别Helper.php里面的函数呢？到composer.json文件里的"autoload":{}里面添加如下代码：
+    "autoload": {
+        "classmap": [
+            "database"
+        ],
+        "psr-4": {
+            "App\\": "app/"
+        },
+        "files": [
+            "app/Helper.php"
+        ]
+    },
+#### 3、还需要在命令行执行如下代码刷新autoload缓存才能马上起作用：
+    composer dumpautoload
+## 7、如何重构上面6步的代码，将每个图形的js代码单独放到一个js文件里面，然后引用即可：
+### 7-1,重构饼状图的js代码：
+### ①、在public\js\目录下面创建一个pie.js,用来放置饼状图的js代码，内容为：
+    // 基于准备好的dom，初始化echarts实例
+    var pieChart = echarts.init(document.getElementById('pieChart'));
+    
+    // 指定图表的配置项和数据
+    var pieChartOption = {
+        title : {
+            text: '任务完成量统计图',
+            subtext: '任务总数：'+ {{ $taskTotal }},
+            x:'center'
+        },
+        tooltip : {
+            trigger: 'item',
+            formatter: "{a} <br/>{b} : {c} ({d}%)"
+        },
+        legend: {
+            orient: 'horizontal',
+            left: 'center',
+            bottom:0,
+            data: ['未完成任务','已完成任务']
+        },
+        series : [
+            {
+                name: '任务数',
+                type: 'pie',
+                radius : '55%',
+                center: ['50%', '55%'],
+                data:[
+                    {value:{{ $todoCount }}, name:'未完成任务'},
+                    {value:{{ $doneCount }}, name:'已完成任务'}
+                ],
+                itemStyle: {
+                    emphasis: {
+                        shadowBlur: 10,
+                        shadowOffsetX: 0,
+                        shadowColor: 'rgba(0, 0, 0, 0.5)'
+                    }
+                }
+            }
+        ]
+    };
+    // 使用刚指定的配置项和数据显示图表。
+    pieChart.setOption(pieChartOption);
+### ②、但是现在又有个问题了，{{ $taskTotal }}这样的参数就不能直接传递进去了，只有用jquery的方式来传递：
+#### 1、首先要添加如下代码到charts\index.blade.php里面来传递参数：
+    <div id="pie-data" data-total="{{ $taskTotal }}" data-todo="{{ $todoCount }}" data-done="{{ $doneCount }}"></div>
+#### 2、然后在public\js\pie.js里面用jquery的方式调用这些数据：
+    将{{ $taskTotal }}换成$('#pie-data').data('total');
+    将{{ $todoCount }}换成$('#pie-data').data('todo');
+    将{{ $doneCount }}换成$('#pie-data').data('done');
+#### 3、最终的public\js\pie.js代码为：
+    // 基于准备好的dom，初始化echarts实例
+    var pieChart = echarts.init(document.getElementById('pieChart'));
+    
+    // 指定图表的配置项和数据
+    var pieChartOption = {
+        title : {
+            text: '任务完成量统计图',
+            subtext: '任务总数：'+ $('#pie-data').data('total'),
+            x:'center'
+        },
+        tooltip : {
+            trigger: 'item',
+            formatter: "{a} <br/>{b} : {c} ({d}%)"
+        },
+        legend: {
+            orient: 'horizontal',
+            left: 'center',
+            bottom:0,
+            data: ['未完成任务','已完成任务']
+        },
+        series : [
+            {
+                name: '任务数',
+                type: 'pie',
+                radius : '55%',
+                center: ['50%', '55%'],
+                data:[
+                    {value:$('#pie-data').data('todo'), name:'未完成任务'},
+                    {value:$('#pie-data').data('done'), name:'已完成任务'}
+                ],
+                itemStyle: {
+                    emphasis: {
+                        shadowBlur: 10,
+                        shadowOffsetX: 0,
+                        shadowColor: 'rgba(0, 0, 0, 0.5)'
+                    }
+                }
+            }
+        ]
+    };
+    // 使用刚指定的配置项和数据显示图表。
+    pieChart.setOption(pieChartOption);
+### 7-2,重构柱状图的js代码：    
+### ①、同上面方法一样，在public\js\目录下面创建一个bar.js,用来放置柱状图的js代码，内容为：
+    // 下面是柱状图
+    var barChart = echarts.init(document.getElementById('barChart'));
+    var barChartOption = {
+        title : {
+            text: '项目种类及相关完成情况',
+            subtext: '项目总数：'+ {{ $projectTotal }},
+            x:'center'
+        },
+        tooltip : {
+            trigger: 'axis',
+                axisPointer : {            // 坐标轴指示器，坐标轴触发有效
+                type : 'shadow'        // 默认为直线，可选为：'line' | 'shadow'
+            }
+        },
+        legend: {
+            data:['任务总数','未完成','已完成'],
+                bottom:0
+        },
+        grid: {
+            left: '3%',
+                right: '4%',
+                bottom: '8%',
+                containLabel: true
+        },
+        xAxis : [
+            {
+                type : 'category',
+                data : {!! $projectNameList !!}//如果还是不显示，就用{!! json_encode($projectNameList,JSON_UNESCAPED_UNICODE) !!}
+            }
+        ],
+        yAxis : [
+            {
+                type : 'value'
+            }
+        ],
+        series : [
+            {
+                name:'任务总数',
+                type:'bar',
+                data:{!! json_encode(TaskCountArray($projects)) !!},//这里必须要用json_encode()转吗
+            },
+            {
+                name:'已完成',
+                    type:'bar',
+                barWidth : 5,
+                stack: '任务总数',
+                data:{!! json_encode(DoneTaskCountArray($projects)) !!}
+            },
+            {
+                name:'未完成',
+                    type:'bar',
+                barWidth : 5,
+                stack: '任务总数',
+                data:{!! json_encode(TodoTaskCountArray($projects)) !!}
+            }
+        ]
+    };
+    barChart.setOption(barChartOption);
+### ②、添加如下代码到charts\index.blade.php里面来传递参数：
+    <div id="bar-data" 
+         data-projecttotal={{ $projectTotal }} 
+         data-projectnamelist={!! $projectNameList !!} 
+         data-totalcount={!! json_encode(TaskCountArray($projects)) !!}
+         data-donecount={!! json_encode(DoneTaskCountArray($projects)) !!}
+         data-todocount={!! json_encode(TodoTaskCountArray($projects)) !!}
+    ></div>
+### ③、在public\js\bar.js里面用jquery的方式调用这些数据：
+    将{{ $projectTotal }}换成：$('#bar-data').data('projecttotal');
+    将{!! $projectNameList !!}换成：$('#bar-data').data('projectnamelist');
+    将{!! json_encode(TaskCountArray($projects)) !!}换成：$('#bar-data').data('totalcount');
+    将{!! json_encode(DoneTaskCountArray($projects)) !!}换成：$('#bar-data').data('donecount');
+    将{!! json_encode(TodoTaskCountArray($projects)) !!}换成：$('#bar-data').data('todocount');
+## 然后到charts\index.blade.php里面引用两个图表文件即可（就是这么简单）：
+    @section('js')
+        <script src="{{ asset('js/pie.js') }}"></script>
+        <script src="{{ asset('js/bar.js') }}"></script>
+    @endsection
+## 8、但是为了减少http请求，最好是将pie.js和bar.js这两个文件编译到app.js里面，那么如何做呢：
+### ①、将bar.js,pie.js文件剪切到resources\assets\js\charts目录下面
+### ②、找到webpack.mix.js文件，对里面的内容进行如下编辑：
+    mix.js('resources/assets/js/app.js', 'public/js')
+        .js(['resources/assets/js/charts/bar.js','resources/assets/js/charts/pie.js'],'public/js/charts.js')
+       .sass('resources/assets/sass/app.scss', 'public/css');
+### ③、在命令行里面执行如下命令进行编译：
+    npm run dev
+### ④、然后到charts\index.blade.php里面调用一个文件就行了：
+    @section('js')
+        <script src="{{ asset('js/charts.js') }}"></script>
+    @endsection
+## 9、再创建一个雷达图，实现类似于bar.js的效果：
+### ①、雷达图的步骤和上面是一样的，但是需要解决一个核心的问题，就是如何解决data的数据循环问题(即下面的data如何通过循环输出)：
+    data : [
+        {
+            value : [4300, 10000, 28000],
+            name : '私人任务'
+        },
+        {
+            value : [5000, 15000, 24000],
+            name : '余亭'
+        },
+        {
+            value : [4000, 12000, 27000],
+            name : '公共任务'
+        },
+        {
+            value : [3000, 16000, 28000],
+            name : 'yuting'
+        }
+    ]
+### ②、解决上面的循环输出问题，即在js里面写php代码：
+    data : [
+        <?php
+            $i = 0;
+            foreach ($projects as $project):
+                $name = $project->name;
+                $totalPP = $project->tasks()->count();
+                $todoPP = $project->tasks()->where('completed','F')->count();
+                $donePP = $project->tasks()->where('completed','T')->count();
+                echo '{';
+        ?>
+            value: [ <?php echo $totalPP.',' .$todoPP.',' .$donePP?> ],
+            name: "<?php echo $name?>"
+        <?php
+                ($i+1) == $projects->count()? print '}':print '},';
+                $i++;
+            endforeach;
+        ?>
+    ]
+### ③、在charts\index.blade.php里面创建放置雷达图DOM的代码为：
+    <div class="col-md-4">
+        <!-- 为 ECharts 雷达状图 准备一个具备大小（宽高）的 DOM -->
+        <div id="radarChart" style="width: 100%;height: 300px"></div>
+    </div>
+### ④、雷达图的js代码，内容为：
+    // 下面是雷达图
+    var radarChart = echarts.init(document.getElementById('radarChart'));
+    radarChartOption = {
+        title: {
+            text: '基础雷达图',
+            x: 'center'
+        },
+        tooltip: {},
+        legend: {
+            data: {!! $projectNameList !!},
+            bottom: 0
+        },
+        radar: {
+            // shape: 'circle',
+            indicator: [   //下面的max:是取得所有项目中任务数量最大的数值，getMax()是在Helper.php里面定义的
+                { name: '项目总数', max: {{ getMax(TaskCountArray($projects)) }} },
+                { name: '未完成', max:  {{ getMax(TaskCountArray($projects)) }} },
+                { name: '已完成', max: {{ getMax(TaskCountArray($projects)) }} },
+            ],
+            center: ['50%','60%']
+        },
+        series: [{
+            type: 'radar',
+            areaStyle: {normal: {}},
+            data : [
+                <?php
+                    $i = 0;
+                    foreach ($projects as $project):
+                    $name = $project->name;
+                    $totalPP = $project->tasks()->count();
+                    $todoPP = $project->tasks()->where('completed','F')->count();
+                    $donePP = $project->tasks()->where('completed','T')->count();
+                    echo '{';
+                ?>
+                    value: [ <?php echo $totalPP.',' .$todoPP.',' .$donePP?> ],
+                    name: "<?php echo $name?>"
+                <?php
+                    ($i+1) == $projects->count()? print '}':print '},';
+                    $i++;
+                    endforeach;
+                ?>
+            ]
+        }]
+    };
+    radarChart.setOption(radarChartOption);
+### ⑤、Helper.php里面添加getMax($arr)方法，用来找出所有项目中任务数最大的数值：
+    function getMax($arr)
+    {
+        $max=$arr[0];
+        foreach($arr as $k=>$v){
+          if($v>$max){
+              $max=$v;
+          }
+        }
+        return $max;
+    }
+### 思考，如何将②步在js里面写php转换成在php里面写js代码？？？(提示，需要借助Helper.php)
+#### ①、Helper.php里面添加代码：    
+    function data($projects)
+    {
+        $data = [];
+        foreach ($projects as $project){
+            $name = $project->name;
+            $totalPP = $project->tasks()->count();
+            $todoPP = $project->tasks()->where('completed','F')->count();
+            $donePP = $project->tasks()->where('completed','T')->count();
+            $date = '{"value":['.$totalPP.','.$todoPP.','.$donePP.'],"name":'.'"'.$name.'"}';//这里很重要的，注意格式
+            array_push($data,json_decode($date,true));//为什么这么写参考http://www.cnblogs.com/xcxc/p/3729207.html
+        }
+        return $data;
+    }
+#### ②、将雷达图的js代码的data部分进行修改：
+    //修改前的代码
+    data : [
+            {
+                value : [4300, 10000, 28000],
+                name : '私人任务'
+            },
+            {
+                value : [5000, 15000, 24000],
+                name : '余亭'
+            },
+            {
+                value : [4000, 12000, 27000],
+                name : '公共任务'
+            },
+            {
+                value : [3000, 16000, 28000],
+                name : 'yuting'
+            }
+        ]
+    //修改后的代码：
+    data : {!! json_encode(data($projects)) !!}
+#### ③、在resources\assets\js\charts目录下创建radar.js,内容为：
+    // 下面是雷达图
+    var radarChart = echarts.init(document.getElementById('radarChart'));
+    radarChartOption = {
+        title: {
+            text: '基础雷达图',
+            x: 'center'
+        },
+        tooltip: {},
+        legend: {
+            data: $('#radar-data').data('projectnamelist'),
+            bottom: 0
+            },
+            radar: {
+                // shape: 'circle',
+                indicator: [
+                    { name: '项目总数', max: $('#radar-data').data('max') },
+                    { name: '未完成', max:  $('#radar-data').data('max') },
+                    { name: '已完成', max: $('#radar-data').data('max') },
+                ],
+                center: ['50%','60%']
+            },
+            series: [{
+                type: 'radar',
+                areaStyle: {normal: {}},
+                data : $('#radar-data').data('data')
+            }]
+    };
+    radarChart.setOption(radarChartOption);
+#### ④、添加如下代码到charts\index.blade.php里面来为雷达图传递参数： 
+    <div id="radar-data"
+        data-projectnamelist={!! $projectNameList !!}
+        data-max={{ getMax(TaskCountArray($projects)) }}
+        data-data={!! json_encode(data($projects)) !!}
+    ></div>
+#### ⑤、到webpack.mix.js添加'resources/assets/js/charts/radar.js'，然后执行：
+    npm run dev
+
     

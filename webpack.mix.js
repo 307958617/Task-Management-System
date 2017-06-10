@@ -12,4 +12,5 @@ const { mix } = require('laravel-mix');
  */
 
 mix.js('resources/assets/js/app.js', 'public/js')
+    .js(['resources/assets/js/charts/bar.js','resources/assets/js/charts/pie.js','resources/assets/js/charts/radar.js'],'public/js/charts.js')
    .sass('resources/assets/sass/app.scss', 'public/css');

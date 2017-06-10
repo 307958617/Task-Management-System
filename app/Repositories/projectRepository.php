@@ -46,4 +46,19 @@ class projectRepository
         }
         return $name='default.jpg';
     }
+
+    public function total()
+    {
+        return Project::all()->count();
+    }
+
+    public function projectNameList()
+    {
+        return Project::all()->pluck('name');
+    }
+
+    public function projects()
+    {
+        return Project::with('tasks')->get();
+    }
 }
