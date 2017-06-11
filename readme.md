@@ -1579,5 +1579,41 @@
     ></div>
 #### ⑤、到webpack.mix.js添加'resources/assets/js/charts/radar.js'，然后执行：
     npm run dev
-
+# 步骤八、Vue.js学习
+## 1、laravel默认已经在resources\assets\js\app.js里面加载了Vue,并在resources\assets\js\bootstrap.js里面默认加载了axios插件用来处理http请求。并且通过Vue.component('example', require('./components/Example.vue'));引入了Example.vue，现在就可以在任何页面去使用这个组件了，方法是直接在页面里引入<example></example>即可调用
+## 2、通过新建、编辑、修改steps(即给每个任务(task)增加实现步骤(steps)的功能)这个例子来学习如何使用vue.js:
+### ①、在views\tasks目录下创建show.blade.php用来实现steps的增删改查，具体内容为：
+### ②、修改TaskController里面的show()方法，实现视图绑定：
+    public function show($id)
+    {
+        return view('tasks.show');
+    }
+### ③、在resources\assets\js\components目录下创建一个steps文件夹，用来存放于steps有关的vue组件；
+### ④、在resources\assets\js\components\steps目录下创建index.vue来实现steps的增删改查功能,vue的基本结构为：
+    <template>
+        <div class="container">
+            
+        </div>
+    </template>
     
+    <script>
+        export default {
+            mounted() {
+                console.log('Component index.')
+            },
+            data() {
+                return {
+                    message:'sdsdfasdf!'
+                }
+            }
+        }
+    </script>
+    <style>
+            //用来实现html的具体样式，这个可以不要。
+    </style>
+### ⑤、到app.js里面注册刚才创建的index.vue，通过如下代码实现，以便show.blade.php调用：
+    Vue.component('steps', require('./components/steps/index.vue'));
+### ⑥、到show.blade.php里面调用index.vue，即只要在需要的位置添加如下代码即可实现：
+    <steps></steps>
+### ⑦、在调用之前，不要忘记执行如下代码进行编译，不然是调用不到的哦~！：
+    npm run dev 或 npm run watch(如果这个检测不到，就需要用到npm run watch-poll)

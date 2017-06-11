@@ -63,95 +63,12 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 43);
+/******/ 	return __webpack_require__(__webpack_require__.s = 46);
 /******/ })
 /************************************************************************/
 /******/ ({
 
 /***/ 10:
-/***/ (function(module, exports) {
-
-// 基于准备好的dom，初始化echarts实例
-var pieChart = echarts.init(document.getElementById('pieChart'));
-
-// 指定图表的配置项和数据
-var pieChartOption = {
-    title: {
-        text: '任务完成量统计图',
-        subtext: '任务总数：' + $('#pie-data').data('total'),
-        x: 'center'
-    },
-    tooltip: {
-        trigger: 'item',
-        formatter: "{a} <br/>{b} : {c} ({d}%)"
-    },
-    legend: {
-        orient: 'horizontal',
-        left: 'center',
-        bottom: 0,
-        data: ['未完成任务', '已完成任务']
-    },
-    series: [{
-        name: '任务数',
-        type: 'pie',
-        radius: '55%',
-        center: ['50%', '55%'],
-        data: [{ value: $('#pie-data').data('todo'), name: '未完成任务' }, { value: $('#pie-data').data('done'), name: '已完成任务' }],
-        itemStyle: {
-            emphasis: {
-                shadowBlur: 10,
-                shadowOffsetX: 0,
-                shadowColor: 'rgba(0, 0, 0, 0.5)'
-            }
-        }
-    }]
-};
-// 使用刚指定的配置项和数据显示图表。
-pieChart.setOption(pieChartOption);
-
-/***/ }),
-
-/***/ 11:
-/***/ (function(module, exports) {
-
-// 下面是雷达图
-var radarChart = echarts.init(document.getElementById('radarChart'));
-radarChartOption = {
-    title: {
-        text: '基础雷达图',
-        x: 'center'
-    },
-    tooltip: {},
-    legend: {
-        data: $('#radar-data').data('projectnamelist'),
-        bottom: 0
-    },
-    radar: {
-        // shape: 'circle',
-        indicator: [{ name: '任务总数', max: $('#radar-data').data('max') }, { name: '未完成', max: $('#radar-data').data('max') }, { name: '已完成', max: $('#radar-data').data('max') }],
-        center: ['50%', '60%']
-    },
-    series: [{
-        type: 'radar',
-        areaStyle: { normal: {} },
-        data: $('#radar-data').data('data')
-    }]
-};
-radarChart.setOption(radarChartOption);
-
-/***/ }),
-
-/***/ 43:
-/***/ (function(module, exports, __webpack_require__) {
-
-__webpack_require__(9);
-__webpack_require__(10);
-module.exports = __webpack_require__(11);
-
-
-/***/ }),
-
-/***/ 9:
 /***/ (function(module, exports) {
 
 // 下面是柱状图
@@ -204,6 +121,89 @@ var barChartOption = {
     }]
 };
 barChart.setOption(barChartOption);
+
+/***/ }),
+
+/***/ 11:
+/***/ (function(module, exports) {
+
+// 基于准备好的dom，初始化echarts实例
+var pieChart = echarts.init(document.getElementById('pieChart'));
+
+// 指定图表的配置项和数据
+var pieChartOption = {
+    title: {
+        text: '任务完成量统计图',
+        subtext: '任务总数：' + $('#pie-data').data('total'),
+        x: 'center'
+    },
+    tooltip: {
+        trigger: 'item',
+        formatter: "{a} <br/>{b} : {c} ({d}%)"
+    },
+    legend: {
+        orient: 'horizontal',
+        left: 'center',
+        bottom: 0,
+        data: ['未完成任务', '已完成任务']
+    },
+    series: [{
+        name: '任务数',
+        type: 'pie',
+        radius: '55%',
+        center: ['50%', '55%'],
+        data: [{ value: $('#pie-data').data('todo'), name: '未完成任务' }, { value: $('#pie-data').data('done'), name: '已完成任务' }],
+        itemStyle: {
+            emphasis: {
+                shadowBlur: 10,
+                shadowOffsetX: 0,
+                shadowColor: 'rgba(0, 0, 0, 0.5)'
+            }
+        }
+    }]
+};
+// 使用刚指定的配置项和数据显示图表。
+pieChart.setOption(pieChartOption);
+
+/***/ }),
+
+/***/ 12:
+/***/ (function(module, exports) {
+
+// 下面是雷达图
+var radarChart = echarts.init(document.getElementById('radarChart'));
+radarChartOption = {
+    title: {
+        text: '基础雷达图',
+        x: 'center'
+    },
+    tooltip: {},
+    legend: {
+        data: $('#radar-data').data('projectnamelist'),
+        bottom: 0
+    },
+    radar: {
+        // shape: 'circle',
+        indicator: [{ name: '任务总数', max: $('#radar-data').data('max') }, { name: '未完成', max: $('#radar-data').data('max') }, { name: '已完成', max: $('#radar-data').data('max') }],
+        center: ['50%', '60%']
+    },
+    series: [{
+        type: 'radar',
+        areaStyle: { normal: {} },
+        data: $('#radar-data').data('data')
+    }]
+};
+radarChart.setOption(radarChartOption);
+
+/***/ }),
+
+/***/ 46:
+/***/ (function(module, exports, __webpack_require__) {
+
+__webpack_require__(10);
+__webpack_require__(11);
+module.exports = __webpack_require__(12);
+
 
 /***/ })
 
