@@ -1749,6 +1749,9 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 //
 //
 //
+//
+//
+//
 
 /* harmony default export */ __webpack_exports__["default"] = ({
     mounted: function mounted() {
@@ -1756,22 +1759,26 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
     },
     data: function data() {
         return {
-            message: ''
+            steps: [{ name: 'first', completed: false }, { name: 'second', completed: true }, { name: 'third', completed: false }],
+            newStep: ''
         };
     },
 
     methods: {
-        warn: function warn(message, event) {
-            // 现在我们可以访问原生事件对象
-            //if (event) event.preventDefault();
-            alert(message);
+        addStep: function addStep() {
+            this.steps.push({ name: this.newStep, completed: false });
+            this.newStep = '';
+        },
+        deleteStep: function deleteStep(index) {
+            this.steps.splice(index, 1);
+        },
+        completeStep: function completeStep(step) {
+            step.completed = !step.completed;
         }
     },
     computed: {
-        // a computed getter
-        reversedMessage: function reversedMessage() {
-            // `this` points to the vm instance
-            return this.message.split('').reverse().join('');
+        todoStep: function todoStep() {
+            return '1';
         }
     }
 });
@@ -31838,40 +31845,52 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     staticClass: "row"
   }, [_c('div', {
     staticClass: "col-md-8 col-md-offset-2"
-  }, [_vm._m(0), _vm._v(" "), _c('input', {
+  }, [_c('ul', {
+    staticClass: "list-group"
+  }, _vm._l((_vm.steps), function(step, index) {
+    return _c('li', {
+      staticClass: "list-group-item"
+    }, [_vm._v("\n                     " + _vm._s(_vm.todoStep) + "\n                     "), _c('i', {
+      staticClass: "fa fa-close pull-right",
+      on: {
+        "click": function($event) {
+          _vm.deleteStep(index)
+        }
+      }
+    }), _vm._v(" "), _c('i', {
+      staticClass: "fa fa-check pull-right",
+      on: {
+        "click": function($event) {
+          _vm.completeStep(step)
+        }
+      }
+    })])
+  })), _vm._v(" "), _c('input', {
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.message),
-      expression: "message"
+      value: (_vm.newStep),
+      expression: "newStep"
     }],
     staticClass: "form-control",
     attrs: {
       "type": "text"
     },
     domProps: {
-      "value": (_vm.message)
+      "value": (_vm.newStep)
     },
     on: {
+      "keyup": function($event) {
+        if (!('button' in $event) && _vm._k($event.keyCode, "enter", 13)) { return null; }
+        _vm.addStep($event)
+      },
       "input": function($event) {
         if ($event.target.composing) { return; }
-        _vm.message = $event.target.value
+        _vm.newStep = $event.target.value
       }
     }
-  }), _vm._v(" "), _c('button', {
-    on: {
-      "click": function($event) {
-        _vm.warn('Form cannot be submitted yet.', $event)
-      }
-    }
-  }, [_vm._v("Submits")]), _vm._v(" "), _c('span', [_vm._v(_vm._s(_vm.reversedMessage))])])])])
-},staticRenderFns: [function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('ul', {
-    staticClass: "list-group"
-  }, [_c('li', {
-    staticClass: "list-group-item"
-  }, [_vm._v("每年更新成本")])])
-}]}
+  })]), _vm._v("\n        " + _vm._s(_vm._f("json")(_vm.$data)) + "\n    ")])])
+},staticRenderFns: []}
 module.exports.render._withStripped = true
 if (false) {
   module.hot.accept()
@@ -31915,7 +31934,7 @@ if (false) {
 
 "use strict";
 /* WEBPACK VAR INJECTION */(function(global) {/*!
- * Vue.js v2.3.3
+ * Vue.js v2.3.4
  * (c) 2014-2017 Evan You
  * Released under the MIT License.
  */
@@ -36344,7 +36363,7 @@ Object.defineProperty(Vue$3.prototype, '$ssrContext', {
   }
 });
 
-Vue$3.version = '2.3.3';
+Vue$3.version = '2.3.4';
 
 /*  */
 
@@ -36835,6 +36854,7 @@ function createPatchFunction (backend) {
   function initComponent (vnode, insertedVnodeQueue) {
     if (isDef(vnode.data.pendingInsert)) {
       insertedVnodeQueue.push.apply(insertedVnodeQueue, vnode.data.pendingInsert);
+      vnode.data.pendingInsert = null;
     }
     vnode.elm = vnode.componentInstance.$el;
     if (isPatchable(vnode)) {
