@@ -1759,64 +1759,43 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 //
 //
 //
-//
 
 /* harmony default export */ __webpack_exports__["default"] = ({
-    mounted: function mounted() {
-        console.log('Component index.');
-    },
     data: function data() {
         return {
             steps: [{ name: 'first', completed: false }, { name: 'second', completed: true }, { name: 'third', completed: false }],
-            newStep: { name: '', completed: '' },
-            focusStatus: true
+            newStep: { name: '', completed: false },
+            focusStatus: false //添加一个是否获取焦点的状态参数focusStatus，默认为没有获得焦点
         };
     },
 
-    directives: { //自定义指令：focus 然后在input里面设置 v-focus="focusStatus"，focusStatus就是对应的{value}
-        focus: {
-            inserted: function inserted(el, _ref) {
-                var value = _ref.value;
-
-                if (value) el.focus();
-            }
-        }
-    },
     methods: {
         addStep: function addStep() {
             this.steps.push(this.newStep);
-            this.newStep = { name: '', completed: '' };
+            this.newStep = { name: '', completed: false };
         },
-        deleteStep: function deleteStep(index) {
+        remove: function remove(index) {
             this.steps.splice(index, 1);
         },
-        completeStep: function completeStep(step) {
-            step.completed = !step.completed;
-        },
         edit: function edit(step) {
-            //双击删除当前step，这里需要注意的是不能直接传递index，因为已经在deleteStep()方法中用了index，会产生混淆
-            var index = this.steps.indexOf(step); //必须重新产生当前的index出可以
-            this.deleteStep(index);
-            //输入框中显示当前step的名称，因为当前输入框显示的就是newStep，因此只要给它赋值即可
+            //实现双击列表实现删除当前列的step，即从steps里面删除，这里没有index,所以需要找到step对应的index才能删除
+            var index = this.steps.indexOf(step);
+            this.remove(index);
+            //将newStep.name赋值为当前step的name
             this.newStep.name = step.name;
-            //输入框获得焦点
-            //$('input').focus();//但是这样不是vue.js的内容
+            //input获得焦点：
+            //                $('input').focus();//这是jquery的模式，在vue里面最好是换一种方式实现。
+            this.focusStatus = true; //是否获取焦点的状态参数focusStatus为true，就表示获得焦点了
         }
     },
-    computed: {
-        todoSteps: function todoSteps() {
-            //列出所有步骤中未完成的步骤
-            return this.steps.filter(function (step) {
-                //用filter来取出数组的每个元素来判断，接收一个回调函数
-                if (!step.completed) return step;
-            });
-        },
-        doneSteps: function doneSteps() {
-            //列出所有步骤中已完成的步骤
-            return this.steps.filter(function (step) {
-                //用filter来取出数组的每个元素来判断，接收一个回调函数
-                if (step.completed) return step;
-            });
+    directives: {
+        focus: { //这里与的focus与input里面的v-focus对应
+            update: function update(el, _ref) {
+                var value = _ref.value;
+                //这里的value就是input里面v-focus='focusStatus'的focusStatus对应，同时这里要用update也要注意
+                if (value) el.focus //判断focusStatus是否为true，是就获得了焦点
+                ();
+            }
         }
     }
 });
@@ -31885,41 +31864,36 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     staticClass: "col-md-8 col-md-offset-2"
   }, [_c('ul', {
     staticClass: "list-group"
-  }, _vm._l((_vm.todoSteps), function(step, index) {
-    return _c('li', {
-      staticClass: "list-group-item"
-    }, [_c('span', {
+  }, _vm._l((_vm.steps), function(step, index) {
+    return (!step.completed) ? _c('li', {
+      key: step.id,
+      staticClass: "list-group-item",
       on: {
         "dblclick": function($event) {
           _vm.edit(step)
         }
       }
-    }, [_vm._v(_vm._s(step.name))]), _vm._v(" "), _c('i', {
+    }, [_c('span', [_vm._v(_vm._s(step.name))]), _vm._v(" "), _c('i', {
       staticClass: "fa fa-close pull-right",
       on: {
         "click": function($event) {
-          _vm.deleteStep(index)
+          _vm.remove(index)
         }
       }
     }), _vm._v(" "), _c('i', {
-      staticClass: "fa fa-check pull-right",
-      on: {
-        "click": function($event) {
-          _vm.completeStep(step)
-        }
-      }
-    })])
+      staticClass: "fa fa-check pull-right"
+    })]) : _vm._e()
   })), _vm._v(" "), _c('input', {
     directives: [{
-      name: "focus",
-      rawName: "v-focus",
-      value: (_vm.focusStatus),
-      expression: "focusStatus"
-    }, {
       name: "model",
       rawName: "v-model",
       value: (_vm.newStep.name),
       expression: "newStep.name"
+    }, {
+      name: "focus",
+      rawName: "v-focus",
+      value: (_vm.focusStatus),
+      expression: "focusStatus"
     }],
     staticClass: "form-control",
     attrs: {
@@ -31940,30 +31914,19 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     }
   }), _vm._v(" "), _c('ul', {
     staticClass: "list-group"
-  }, _vm._l((_vm.doneSteps), function(step, index) {
-    return _c('li', {
+  }, _vm._l((_vm.steps), function(step, index) {
+    return (step.completed) ? _c('li', {
       staticClass: "list-group-item"
-    }, [_c('span', {
-      on: {
-        "dblclick": function($event) {
-          _vm.edit(step)
-        }
-      }
-    }, [_vm._v(_vm._s(step.name))]), _vm._v(" "), _c('i', {
+    }, [_c('span', [_vm._v(_vm._s(step.name))]), _vm._v(" "), _c('i', {
       staticClass: "fa fa-close pull-right",
       on: {
         "click": function($event) {
-          _vm.deleteStep(index)
+          _vm.remove(index)
         }
       }
     }), _vm._v(" "), _c('i', {
-      staticClass: "fa fa-check pull-right",
-      on: {
-        "click": function($event) {
-          _vm.completeStep(step)
-        }
-      }
-    })])
+      staticClass: "fa fa-check pull-right"
+    })]) : _vm._e()
   }))]), _vm._v("\n        " + _vm._s(_vm._f("json")(_vm.$data)) + "\n    ")])])
 },staticRenderFns: []}
 module.exports.render._withStripped = true
@@ -32009,7 +31972,7 @@ if (false) {
 
 "use strict";
 /* WEBPACK VAR INJECTION */(function(global) {/*!
- * Vue.js v2.3.4
+ * Vue.js v2.3.3
  * (c) 2014-2017 Evan You
  * Released under the MIT License.
  */
@@ -36438,7 +36401,7 @@ Object.defineProperty(Vue$3.prototype, '$ssrContext', {
   }
 });
 
-Vue$3.version = '2.3.4';
+Vue$3.version = '2.3.3';
 
 /*  */
 
@@ -36929,7 +36892,6 @@ function createPatchFunction (backend) {
   function initComponent (vnode, insertedVnodeQueue) {
     if (isDef(vnode.data.pendingInsert)) {
       insertedVnodeQueue.push.apply(insertedVnodeQueue, vnode.data.pendingInsert);
-      vnode.data.pendingInsert = null;
     }
     vnode.elm = vnode.componentInstance.$el;
     if (isPatchable(vnode)) {

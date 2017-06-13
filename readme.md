@@ -1637,6 +1637,37 @@
             })
         }
     }
-    <li class="list-group-item" v-for="(step, index) in todoSteps">
+    <li class="list-group-item" v-for="(step, index) in todoSteps"> //但是这是有问题的，如果想点击去删除name:'third'，却是删除的name:'second'
          {{ step.name }}
     </li>
+### ①-1、但是还有一种方法是v-for与v-if同时使用，v-for 的优先级比 v-if 更高，这意味着 v-if 将分别重复运行于每个 v-for 循环中(推荐用此方法)：
+    <li class="list-group-item" v-for="(step, index) in steps" v-if="!step.completed">
+         {{ step.name }}
+    </li>
+### ②、实现双击列表<li>时，input的值为当前列的step.name,并且获得焦点：
+#### 首先：在data()里面添加如下代码：
+    focusStatus:false //添加一个是否获取焦点的状态参数focusStatus，默认为没有获得焦点
+#### 其次：在<li>里面添加如下代码：
+    @dblclick="edit(step)"//表示双击修改，这里需要注意是dblclick，不是dbclick
+#### 然后：在methods里面写edit(step)方法：
+    edit(step) {
+        //实现双击列表实现删除当前列的step，即从steps里面删除，这里没有index,所以需要找到step对应的index才能删除
+        var index = this.steps.indexOf(step);
+        this.remove(index);
+        //将newStep.name赋值为当前step的name
+        this.newStep.name = step.name;
+        //input获得焦点：
+        //$('input').focus();//这是jquery的模式，在vue里面最好是换一种方式实现。
+        this.focusStatus=true;//是否获取焦点的状态参数focusStatus为true，就表示获得焦点了
+    }
+#### 再然后：自定义指令v-focus:
+    directives: {
+        focus: { //这里与的focus与input里面的v-focus对应
+            update:function (el,{value}) { //这里的value就是input里面v-focus='focusStatus'的focusStatus对应，同时这里要用update也要注意
+                if (value) el.focus()  //判断focusStatus是否为true，是就获得了焦点
+            }
+        }
+    }
+#### 最后：在input里面添加如下代码：
+    v-focus="focusStatus"
+### ③、

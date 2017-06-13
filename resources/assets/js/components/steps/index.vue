@@ -3,19 +3,18 @@
         <div class="row">
             <div class="col-md-8 col-md-offset-2">
                 <ul class="list-group">
-                     <li class="list-group-item" v-for="(step, index) in todoSteps">
-                         <span @dblclick="edit(step)">{{ step.name }}</span><!-- 这里注意，双击事件是dblclick -->
-                         <i class="fa fa-close pull-right" @click="deleteStep(index)"></i>
-                         <i class="fa fa-check pull-right" @click="completeStep(step)"></i>
+                     <li class="list-group-item" v-for="(step, index) in steps" v-if="!step.completed" @dblclick="edit(step)" :key="step.id">
+                         <span>{{ step.name }}</span><!-- 这里注意，双击事件是dblclick -->
+                         <i class="fa fa-close pull-right" @click="remove(index)"></i>
+                         <i class="fa fa-check pull-right" ></i>
                      </li>
                 </ul>
-                <input class="form-control" v-focus="focusStatus" type="text" @keyup.enter="addStep" v-model="newStep.name">
-
+                <input class="form-control" type="text" @keyup.enter="addStep" v-model="newStep.name" v-focus="focusStatus">
                 <ul class="list-group">
-                    <li class="list-group-item" v-for="(step, index) in doneSteps">
-                        <span @dblclick="edit(step)">{{ step.name }}</span>
-                        <i class="fa fa-close pull-right" @click="deleteStep(index)"></i>
-                        <i class="fa fa-check pull-right" @click="completeStep(step)"></i>
+                    <li class="list-group-item" v-for="(step, index) in steps" v-if="step.completed">
+                        <span>{{ step.name }}</span><!-- 这里注意，双击事件是dblclick -->
+                        <i class="fa fa-close pull-right" @click="remove(index)"></i>
+                        <i class="fa fa-check pull-right" ></i>
                     </li>
                 </ul>
             </div>
@@ -26,9 +25,6 @@
 
 <script>
     export default {
-        mounted() {
-            console.log('Component index.')
-        },
         data() {
             return {
                 steps:[
@@ -36,48 +32,34 @@
                     {name:'second',completed:true},
                     {name:'third',completed:false},
                 ],
-                newStep:{name:'',completed:''},
-                focusStatus:true
-            }
-        },
-        directives: {//自定义指令：focus 然后在input里面设置 v-focus="focusStatus"，focusStatus就是对应的{value}
-            focus: {
-                inserted: function (el,{value}) {
-                    if (value) el.focus()
-                }
+                newStep:{name:'',completed:false},
+                focusStatus:false //添加一个是否获取焦点的状态参数focusStatus，默认为没有获得焦点
             }
         },
         methods: {
             addStep() {
                 this.steps.push(this.newStep);
-                this.newStep = {name:'',completed:''}
+                this.newStep={name:'',completed:false}
             },
-            deleteStep(index) {
+            remove(index) {
                 this.steps.splice(index,1)
             },
-            completeStep(step) {
-                step.completed = !step.completed
-            },
             edit(step) {
-                //双击删除当前step，这里需要注意的是不能直接传递index，因为已经在deleteStep()方法中用了index，会产生混淆
-                var index = this.steps.indexOf(step);  //必须重新产生当前的index出可以
-                this.deleteStep(index);
-                //输入框中显示当前step的名称，因为当前输入框显示的就是newStep，因此只要给它赋值即可
+                //实现双击列表实现删除当前列的step，即从steps里面删除，这里没有index,所以需要找到step对应的index才能删除
+                var index = this.steps.indexOf(step);
+                this.remove(index);
+                //将newStep.name赋值为当前step的name
                 this.newStep.name = step.name;
-                //输入框获得焦点
-                //$('input').focus();//但是这样不是vue.js的内容
-            },
+                //input获得焦点：
+//                $('input').focus();//这是jquery的模式，在vue里面最好是换一种方式实现。
+                this.focusStatus=true;//是否获取焦点的状态参数focusStatus为true，就表示获得焦点了
+            }
         },
-        computed: {
-            todoSteps() { //列出所有步骤中未完成的步骤
-               return this.steps.filter(function (step) {  //用filter来取出数组的每个元素来判断，接收一个回调函数
-                    if (!step.completed) return step
-                })
-            },
-            doneSteps() { //列出所有步骤中已完成的步骤
-                return this.steps.filter(function (step) {  //用filter来取出数组的每个元素来判断，接收一个回调函数
-                    if (step.completed) return step
-                })
+        directives: {
+            focus: { //这里与的focus与input里面的v-focus对应
+                update:function (el,{value}) { //这里的value就是input里面v-focus='focusStatus'的focusStatus对应，同时这里要用update也要注意
+                    if (value) el.focus()  //判断focusStatus是否为true，是就获得了焦点
+                }
             }
         }
     }
