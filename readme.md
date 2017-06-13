@@ -1617,3 +1617,26 @@
     <steps></steps>
 ### ⑦、在调用之前，不要忘记执行如下代码进行编译，不然是调用不到的哦~！：
     npm run dev 或 npm run watch(如果这个检测不到，就需要用到npm run watch-poll)
+## 3、Vue.js要点札记：
+### ①、想要获得数组里面的部分有值，一般需要用到过滤器，但是2.0以后对过滤器进行了限制，推荐使用computed计算属性：
+    例子：数据为steps，那么如何循环输出steps里面completed=false的step：
+    data() {
+        return {
+            steps:[
+                {name:'first',completed:false},
+                {name:'second',completed:true},
+                {name:'third',completed:false},
+            ]    
+        }
+    },
+    实现：
+    computed: {  //这里采用计算属性来解决
+        todoSteps() { //列出所有步骤中未完成的步骤
+           return this.steps.filter(function (step) {  //用filter来取出数组的每个元素来判断，接收一个回调函数
+                if (!step.completed) return step  //对每个step进行计算后返回符合条件的step
+            })
+        }
+    }
+    <li class="list-group-item" v-for="(step, index) in todoSteps">
+         {{ step.name }}
+    </li>

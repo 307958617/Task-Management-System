@@ -1752,6 +1752,14 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 //
 //
 //
+//
+//
+//
+//
+//
+//
+//
+//
 
 /* harmony default export */ __webpack_exports__["default"] = ({
     mounted: function mounted() {
@@ -1760,25 +1768,55 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
     data: function data() {
         return {
             steps: [{ name: 'first', completed: false }, { name: 'second', completed: true }, { name: 'third', completed: false }],
-            newStep: ''
+            newStep: { name: '', completed: '' },
+            focusStatus: true
         };
     },
 
+    directives: { //自定义指令：focus 然后在input里面设置 v-focus="focusStatus"，focusStatus就是对应的{value}
+        focus: {
+            inserted: function inserted(el, _ref) {
+                var value = _ref.value;
+
+                if (value) el.focus();
+            }
+        }
+    },
     methods: {
         addStep: function addStep() {
-            this.steps.push({ name: this.newStep, completed: false });
-            this.newStep = '';
+            this.steps.push(this.newStep);
+            this.newStep = { name: '', completed: '' };
         },
         deleteStep: function deleteStep(index) {
             this.steps.splice(index, 1);
         },
         completeStep: function completeStep(step) {
             step.completed = !step.completed;
+        },
+        edit: function edit(step) {
+            //双击删除当前step，这里需要注意的是不能直接传递index，因为已经在deleteStep()方法中用了index，会产生混淆
+            var index = this.steps.indexOf(step); //必须重新产生当前的index出可以
+            this.deleteStep(index);
+            //输入框中显示当前step的名称，因为当前输入框显示的就是newStep，因此只要给它赋值即可
+            this.newStep.name = step.name;
+            //输入框获得焦点
+            //$('input').focus();//但是这样不是vue.js的内容
         }
     },
     computed: {
-        todoStep: function todoStep() {
-            return '1';
+        todoSteps: function todoSteps() {
+            //列出所有步骤中未完成的步骤
+            return this.steps.filter(function (step) {
+                //用filter来取出数组的每个元素来判断，接收一个回调函数
+                if (!step.completed) return step;
+            });
+        },
+        doneSteps: function doneSteps() {
+            //列出所有步骤中已完成的步骤
+            return this.steps.filter(function (step) {
+                //用filter来取出数组的每个元素来判断，接收一个回调函数
+                if (step.completed) return step;
+            });
         }
     }
 });
@@ -31847,10 +31885,16 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     staticClass: "col-md-8 col-md-offset-2"
   }, [_c('ul', {
     staticClass: "list-group"
-  }, _vm._l((_vm.steps), function(step, index) {
+  }, _vm._l((_vm.todoSteps), function(step, index) {
     return _c('li', {
       staticClass: "list-group-item"
-    }, [_vm._v("\n                     " + _vm._s(_vm.todoStep) + "\n                     "), _c('i', {
+    }, [_c('span', {
+      on: {
+        "dblclick": function($event) {
+          _vm.edit(step)
+        }
+      }
+    }, [_vm._v(_vm._s(step.name))]), _vm._v(" "), _c('i', {
       staticClass: "fa fa-close pull-right",
       on: {
         "click": function($event) {
@@ -31867,17 +31911,22 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     })])
   })), _vm._v(" "), _c('input', {
     directives: [{
+      name: "focus",
+      rawName: "v-focus",
+      value: (_vm.focusStatus),
+      expression: "focusStatus"
+    }, {
       name: "model",
       rawName: "v-model",
-      value: (_vm.newStep),
-      expression: "newStep"
+      value: (_vm.newStep.name),
+      expression: "newStep.name"
     }],
     staticClass: "form-control",
     attrs: {
       "type": "text"
     },
     domProps: {
-      "value": (_vm.newStep)
+      "value": (_vm.newStep.name)
     },
     on: {
       "keyup": function($event) {
@@ -31886,10 +31935,36 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       },
       "input": function($event) {
         if ($event.target.composing) { return; }
-        _vm.newStep = $event.target.value
+        _vm.newStep.name = $event.target.value
       }
     }
-  })]), _vm._v("\n        " + _vm._s(_vm._f("json")(_vm.$data)) + "\n    ")])])
+  }), _vm._v(" "), _c('ul', {
+    staticClass: "list-group"
+  }, _vm._l((_vm.doneSteps), function(step, index) {
+    return _c('li', {
+      staticClass: "list-group-item"
+    }, [_c('span', {
+      on: {
+        "dblclick": function($event) {
+          _vm.edit(step)
+        }
+      }
+    }, [_vm._v(_vm._s(step.name))]), _vm._v(" "), _c('i', {
+      staticClass: "fa fa-close pull-right",
+      on: {
+        "click": function($event) {
+          _vm.deleteStep(index)
+        }
+      }
+    }), _vm._v(" "), _c('i', {
+      staticClass: "fa fa-check pull-right",
+      on: {
+        "click": function($event) {
+          _vm.completeStep(step)
+        }
+      }
+    })])
+  }))]), _vm._v("\n        " + _vm._s(_vm._f("json")(_vm.$data)) + "\n    ")])])
 },staticRenderFns: []}
 module.exports.render._withStripped = true
 if (false) {
