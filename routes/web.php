@@ -27,4 +27,9 @@ Route::patch('task/{task}/check',['as'=>'task.check','uses'=>'TaskController@che
 
 Route::resource('task','TaskController');
 
+Route::resource('task.step','StepController');//注意这里是用了双重resource路由'task.step'，rul的格式就是：task/{task}/step/{step}
+Route::patch('task/{task}/step/{step}/toggleComplete','StepController@toggleComplete');//给完成步骤和取消完成步骤添加路由，因为resource路由没有这个方法
+Route::post('task/{task}/step/complete','StepController@completeAll');//给完成所有步骤添加路由，因为resource路由没有这个方法
+Route::post('task/{task}/step/clear','StepController@clearCompleted');//给清除所有已完成的步骤添加路由，因为resource路由没有这个方法
+
 Route::get('chart','ChartController@index')->name('chart.index');

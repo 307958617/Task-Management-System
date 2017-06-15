@@ -1759,40 +1759,166 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 //
 //
 //
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
 
 /* harmony default export */ __webpack_exports__["default"] = ({
     data: function data() {
         return {
-            steps: [{ name: 'first', completed: false }, { name: 'second', completed: true }, { name: 'third', completed: false }],
-            newStep: { name: '', completed: false },
-            focusStatus: false //添加一个是否获取焦点的状态参数focusStatus，默认为没有获得焦点
+            steps: [{ name: '', completed: false, editStatus: false }],
+            newStep: '',
+            focusStatus: false, //为用来操作input修改框是否获取焦点的状态做准备。
+            oldName: '', //用来记录修改前的step的名字，以便点击esc取消时还原原来的数据。
+            baseUrl: top.location + '/step/' //top.location是jquery的获取当前浏览器url的命令
         };
     },
 
+    computed: {
+        todoSteps: function todoSteps() {
+            //获取未完成步骤
+            return this.steps.filter(function (step) {
+                return !step.completed;
+            });
+        },
+        doneSteps: function doneSteps() {
+            //获取已完成步骤
+            return this.steps.filter(function (step) {
+                return step.completed;
+            });
+        }
+    },
+    mounted: function mounted() {
+        //一加载就提取数据
+        this.fetchSteps();
+    },
+
     methods: {
-        addStep: function addStep() {
-            this.steps.push(this.newStep);
-            this.newStep = { name: '', completed: false };
-        },
-        remove: function remove(index) {
-            this.steps.splice(index, 1);
-        },
         edit: function edit(step) {
-            //实现双击列表实现删除当前列的step，即从steps里面删除，这里没有index,所以需要找到step对应的index才能删除
+            //实现双击后的显示input修改框，并且将当前的name写入input框，并获得焦点。
+            this.steps.filter(function (step) {
+                return step.editStatus = false;
+            });
+            step.editStatus = true;
+            this.focusStatus = true;
+            this.oldName = step.name;
+        },
+        updateStep: function updateStep(step) {
+            //实现回车后将修改数据提交给数据库保存，并让input输入框消失。（使用axios.put也行）
+            axios.patch(this.baseUrl + step.id, { name: step.name }).then(function (response) {
+                console.log(response);
+                step.editStatus = false;
+                this.focusStatus = false;
+            }.bind(this));
+        },
+        exit: function exit(step) {
+            //实现点击esc退出当前的修改框即放弃修改
+            step.editStatus = false;
+            this.focusStatus = false;
+            step.name = this.oldName;
+        },
+        addStep: function addStep() {
+            //实现点击回车，添加数据到数据库
+            axios.post(this.baseUrl, { name: this.newStep }).then(function (response) {
+                //this.steps.push({name:this.newStep,completed:false,editStatus:false});//注意，这里不能用这样，因为如果这样的话没有加载新的数据，在更新的时候回报错而更新不了
+                this.newStep = '';
+                this.fetchSteps(); //需要使用它来重新加载一下数据
+            }.bind(this));
+        },
+        fetchSteps: function fetchSteps() {
+            //从数据库中获取steps的数据
+            axios(this.baseUrl).then(function (response) {
+                this.steps = response.data;
+            }.bind(this));
+        },
+        remove: function remove(step) {
             var index = this.steps.indexOf(step);
-            this.remove(index);
-            //将newStep.name赋值为当前step的name
-            this.newStep.name = step.name;
-            //input获得焦点：
-            //                $('input').focus();//这是jquery的模式，在vue里面最好是换一种方式实现。
-            this.focusStatus = true; //是否获取焦点的状态参数focusStatus为true，就表示获得焦点了
+            axios.delete(this.baseUrl + step.id).then(function (response) {
+                this.steps.splice(index, 1);
+            }.bind(this));
+        },
+        toggleComplete: function toggleComplete(step) {
+            axios.patch(this.baseUrl + step.id + '/toggleComplete').then(function (response) {
+                step.completed = !step.completed;
+            });
+        },
+        completeAll: function completeAll() {
+            //标记完成所有任务
+            axios.post(this.baseUrl + 'complete').then(function (response) {
+                this.steps.forEach(function (step) {
+                    //标记完成所有任务用forEach来解决，但是也可以用this.fetchSteps();来重新提取数据，因为在数据库里面已经改变过来了
+                    step.completed = true;
+                });
+            }.bind(this));
+        },
+        clearCompleted: function clearCompleted() {
+            //                this.steps.forEach(function (step) {  //这个方法不太好，因为请求太多次了，而且容易出现错误
+            //                    if (step.completed) this.remove(step)
+            //                }.bind(this))
+
+            axios.post(this.baseUrl + 'clear').then(function (response) {
+                this.fetchSteps();
+            }.bind(this));
         }
     },
     directives: {
         focus: { //这里与的focus与input里面的v-focus对应
-            update: function update(el, _ref) {
+            inserted: function inserted(el, _ref) {
                 var value = _ref.value;
-                //这里的value就是input里面v-focus='focusStatus'的focusStatus对应，同时这里要用update也要注意
+                //这里的value就是input里面v-focus='step.focusStatus'的focusStatus对应，同时这里要用update也要注意
                 if (value) el.focus //判断focusStatus是否为true，是就获得了焦点
                 ();
             }
@@ -31861,34 +31987,19 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
   }, [_c('div', {
     staticClass: "row"
   }, [_c('div', {
-    staticClass: "col-md-8 col-md-offset-2"
-  }, [_c('ul', {
-    staticClass: "list-group"
-  }, _vm._l((_vm.steps), function(step, index) {
-    return (!step.completed) ? _c('li', {
-      key: step.id,
-      staticClass: "list-group-item",
-      on: {
-        "dblclick": function($event) {
-          _vm.edit(step)
-        }
-      }
-    }, [_c('span', [_vm._v(_vm._s(step.name))]), _vm._v(" "), _c('i', {
-      staticClass: "fa fa-close pull-right",
-      on: {
-        "click": function($event) {
-          _vm.remove(index)
-        }
-      }
-    }), _vm._v(" "), _c('i', {
-      staticClass: "fa fa-check pull-right"
-    })]) : _vm._e()
-  })), _vm._v(" "), _c('input', {
+    staticClass: "col-md-12"
+  }, [_c('div', {
+    staticClass: "panel panel-primary"
+  }, [_c('div', {
+    staticClass: "panel-heading"
+  }, [_c('div', {
+    staticClass: "panel-title panel-danger"
+  }, [_vm._v("完成该任务(Task)需要哪些步骤？")]), _vm._v(" "), _c('input', {
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.newStep.name),
-      expression: "newStep.name"
+      value: (_vm.newStep),
+      expression: "newStep"
     }, {
       name: "focus",
       rawName: "v-focus",
@@ -31900,7 +32011,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "type": "text"
     },
     domProps: {
-      "value": (_vm.newStep.name)
+      "value": (_vm.newStep)
     },
     on: {
       "keyup": function($event) {
@@ -31909,25 +32020,170 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       },
       "input": function($event) {
         if ($event.target.composing) { return; }
-        _vm.newStep.name = $event.target.value
+        _vm.newStep = $event.target.value
       }
     }
-  }), _vm._v(" "), _c('ul', {
+  })])])])]), _vm._v(" "), _c('div', {
+    staticClass: "row"
+  }, [_c('div', {
+    staticClass: "col-md-6"
+  }, [_c('div', {
+    staticClass: "panel panel-danger"
+  }, [_c('div', {
+    staticClass: "panel-heading"
+  }, [_c('h1', {
+    staticClass: "panel-title"
+  }, [_vm._v("\n                        待完成的步骤(" + _vm._s(_vm.todoSteps.length) + ")\n                        "), _c('button', {
+    staticClass: "btn btn-xs btn-success",
+    on: {
+      "click": _vm.completeAll
+    }
+  }, [_vm._v("完成所有")])])]), _vm._v(" "), (_vm.todoSteps.length) ? _c('div', {
+    staticClass: "panel-body"
+  }, [_c('ul', {
     staticClass: "list-group"
   }, _vm._l((_vm.steps), function(step, index) {
-    return (step.completed) ? _c('li', {
-      staticClass: "list-group-item"
-    }, [_c('span', [_vm._v(_vm._s(step.name))]), _vm._v(" "), _c('i', {
+    return (!step.completed) ? _c('li', {
+      staticClass: "list-group-item",
+      on: {
+        "dblclick": function($event) {
+          _vm.edit(step)
+        }
+      }
+    }, [_c('table', {
+      staticClass: "table",
+      staticStyle: {
+        "margin-bottom": "0"
+      }
+    }, [_c('tr', [_c('td', [_c('span', [_vm._v(_vm._s(step.name))])]), _vm._v(" "), _c('td', [(step.editStatus) ? _c('input', {
+      directives: [{
+        name: "model",
+        rawName: "v-model",
+        value: (step.name),
+        expression: "step.name"
+      }, {
+        name: "focus",
+        rawName: "v-focus",
+        value: (_vm.focusStatus),
+        expression: "focusStatus"
+      }],
+      staticClass: "form-control",
+      attrs: {
+        "type": "text"
+      },
+      domProps: {
+        "value": (step.name)
+      },
+      on: {
+        "keyup": [function($event) {
+          if (!('button' in $event) && _vm._k($event.keyCode, "esc", 27)) { return null; }
+          _vm.exit(step)
+        }, function($event) {
+          if (!('button' in $event) && _vm._k($event.keyCode, "enter", 13)) { return null; }
+          _vm.updateStep(step)
+        }],
+        "input": function($event) {
+          if ($event.target.composing) { return; }
+          step.name = $event.target.value
+        }
+      }
+    }) : _vm._e()]), _vm._v(" "), _c('td', [_c('span', {
+      staticClass: "pull-right"
+    }, [_c('i', {
       staticClass: "fa fa-close pull-right",
       on: {
         "click": function($event) {
-          _vm.remove(index)
+          _vm.remove(step)
         }
       }
     }), _vm._v(" "), _c('i', {
-      staticClass: "fa fa-check pull-right"
-    })]) : _vm._e()
-  }))]), _vm._v("\n        " + _vm._s(_vm._f("json")(_vm.$data)) + "\n    ")])])
+      staticClass: "fa fa-check pull-right",
+      on: {
+        "click": function($event) {
+          _vm.toggleComplete(step)
+        }
+      }
+    })])])])])]) : _vm._e()
+  }))]) : _vm._e()])]), _vm._v(" "), _c('div', {
+    staticClass: "col-md-6"
+  }, [_c('div', {
+    staticClass: "panel panel-success"
+  }, [_c('div', {
+    staticClass: "panel-heading"
+  }, [_c('h1', {
+    staticClass: "panel-title"
+  }, [_vm._v("\n                        已完成的步骤(" + _vm._s(_vm.doneSteps.length) + ")\n                        "), _c('button', {
+    staticClass: "btn btn-xs btn-danger",
+    on: {
+      "click": _vm.clearCompleted
+    }
+  }, [_vm._v("删除所有已完成")])])]), _vm._v(" "), (_vm.doneSteps.length) ? _c('div', {
+    staticClass: "panel-body"
+  }, [_c('ul', {
+    staticClass: "list-group"
+  }, _vm._l((_vm.steps), function(step, index) {
+    return (step.completed) ? _c('li', {
+      staticClass: "list-group-item",
+      on: {
+        "dblclick": function($event) {
+          _vm.edit(step)
+        }
+      }
+    }, [_c('table', {
+      staticClass: "table",
+      staticStyle: {
+        "margin-bottom": "0"
+      }
+    }, [_c('tr', [_c('td', [_c('span', [_vm._v(_vm._s(step.name))])]), _vm._v(" "), _c('td', [(step.editStatus) ? _c('input', {
+      directives: [{
+        name: "model",
+        rawName: "v-model",
+        value: (step.name),
+        expression: "step.name"
+      }, {
+        name: "focus",
+        rawName: "v-focus",
+        value: (_vm.focusStatus),
+        expression: "focusStatus"
+      }],
+      staticClass: "form-control",
+      attrs: {
+        "type": "text"
+      },
+      domProps: {
+        "value": (step.name)
+      },
+      on: {
+        "keyup": [function($event) {
+          if (!('button' in $event) && _vm._k($event.keyCode, "esc", 27)) { return null; }
+          _vm.exit(step)
+        }, function($event) {
+          if (!('button' in $event) && _vm._k($event.keyCode, "enter", 13)) { return null; }
+          _vm.updateStep(step)
+        }],
+        "input": function($event) {
+          if ($event.target.composing) { return; }
+          step.name = $event.target.value
+        }
+      }
+    }) : _vm._e()]), _vm._v(" "), _c('td', [_c('span', {
+      staticClass: "pull-right"
+    }, [_c('i', {
+      staticClass: "fa fa-close pull-right",
+      on: {
+        "click": function($event) {
+          _vm.remove(step)
+        }
+      }
+    }), _vm._v(" "), _c('i', {
+      staticClass: "fa fa-check pull-right",
+      on: {
+        "click": function($event) {
+          _vm.toggleComplete(step)
+        }
+      }
+    })])])])])]) : _vm._e()
+  }))]) : _vm._e()])])])])
 },staticRenderFns: []}
 module.exports.render._withStripped = true
 if (false) {

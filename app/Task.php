@@ -12,4 +12,9 @@ class Task extends Model
     {
         return $this->belongsTo('App\Project');//任务是属于某个项目的
     }
+
+    public function steps()
+    {
+        return $this->hasMany('App\Step');
+    }
 }

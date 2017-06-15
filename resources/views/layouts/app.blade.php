@@ -78,6 +78,7 @@
             @include('flash::message')
         </div>
         @yield('content')
+        <div style="padding-bottom: 100px"></div>
         @include('layouts.footer')
     </div>
 

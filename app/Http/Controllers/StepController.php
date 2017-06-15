@@ -2,29 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\createTaskRequest;
+use App\Step;
 use App\Task;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
-class TaskController extends Controller
+class StepController extends Controller
 {
     /**
      * Display a listing of the resource.
      *
      * @return \Illuminate\Http\Response
      */
-    public function __construct()
+    public function index($id)
     {
-        $this->middleware('auth');
-    }
-
-    public function index()
-    {
-        $projectList = Auth::user()->projects()->pluck('name','id');
-        $todo = Auth::user()->tasks()->where('completed','F')->paginate(5);
-        $done = Auth::user()->tasks()->where('completed','T')->paginate(5);
-        return view('tasks.index',compact('todo','done','projectList'));
+        $steps = Task::findOrFail($id)->steps;
+        return $steps;
     }
 
     /**
@@ -43,13 +35,11 @@ class TaskController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(createTaskRequest $request)
+    public function store($id,Request $request)
     {
-        Task::create([
-            'name'=> $request->name,
-            'project_id' => $request->id
+        Task::findOrFail($id)->steps()->create([
+            'name'=>$request->name
         ]);
-        return back();
     }
 
     /**
@@ -60,8 +50,7 @@ class TaskController extends Controller
      */
     public function show($id)
     {
-        $task = Task::findOrFail($id);
-        return view('tasks.show',compact('task'));
+        //
     }
 
     /**
@@ -82,14 +71,12 @@ class TaskController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, $id)
+    public function update($taskID,Request $request, $id)
     {
-        $task = Task::findOrFail($id);
-        $task->update([
-            'name'=>$request->name,
-            'project_id'=>$request->projectList
+        $step = Step::findOrFail($id);
+        $step->update([
+            'name' => $request->name
         ]);
-        return back();
     }
 
     /**
@@ -98,17 +85,28 @@ class TaskController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function destroy($id)
+    public function destroy($taskID,$id)
     {
-        Task::findOrFail($id)->delete();
-        return back();
+        Step::findOrFail($id)->delete();
     }
 
-    public function check($id)
+    public function toggleComplete($taskID,$id)
     {
-        $task = Task::findOrFail($id);
-        $task->completed = 'T';
-        $task->save();
-        return back();
+        $step = Step::findOrFail($id);
+        $step->update([
+            'completed' => !$step->completed
+        ]);
+    }
+
+    public function completeAll($taskID)
+    {
+        Task::findOrFail($taskID)->steps()->update([
+            'completed' => 1
+        ]);
+    }
+
+    public function clearCompleted($taskID)
+    {
+        Task::findOrFail($taskID)->steps()->where('completed',1)->delete();
     }
 }

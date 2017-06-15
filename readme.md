@@ -1592,25 +1592,183 @@
 ### ④、在resources\assets\js\components\steps目录下创建index.vue来实现steps的增删改查功能,vue的基本结构为：
     <template>
         <div class="container">
-            
+            <div class="row">
+                <div class="col-md-12"><!--添加步骤-->
+                    <div class="panel panel-primary">
+                        <div class="panel-heading">
+                            <div class="panel-title panel-danger">完成该任务(Task)需要哪些步骤？</div>
+                            <input class="form-control" type="text" @keyup.enter="addStep" v-model="newStep" v-focus="focusStatus">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6"><!--显示未完成的步骤-->
+                    <div class="panel panel-danger">
+                        <div class="panel-heading">
+                            <h1 class="panel-title">
+                                待完成的步骤({{ todoSteps.length }})
+                                <button @click="completeAll" class="btn btn-xs btn-success">完成所有</button>
+                            </h1>
+                        </div>
+                        <div v-if="todoSteps.length" class="panel-body">
+                            <ul class="list-group">
+                                <li class="list-group-item" v-for="(step, index) in steps" v-if="!step.completed" @dblclick="edit(step)">
+                                    <table class="table" style="margin-bottom: 0">
+                                        <tr>
+                                            <td>
+                                                <span>{{ step.name }}</span><!-- 这里注意，双击事件是dblclick -->
+                                            </td>
+                                            <td>
+                                                <input class="form-control" type="text" @keyup.esc="exit(step)" @keyup.enter="updateStep(step)" v-if="step.editStatus" v-model="step.name" v-focus="focusStatus">
+                                            </td>
+                                            <td>
+                                         <span class="pull-right">
+                                             <i class="fa fa-close pull-right" @click="remove(step)"></i>
+                                             <i class="fa fa-check pull-right" @click="toggleComplete(step)"></i>
+                                         </span>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6"><!--显示已完成的步骤-->
+                    <div class="panel panel-success">
+                        <div class="panel-heading">
+                            <h1 class="panel-title">
+                                已完成的步骤({{ doneSteps.length }})
+                                <button @click="clearCompleted" class="btn btn-xs btn-danger">删除所有已完成</button>
+                            </h1>
+                        </div>
+                        <div v-if="doneSteps.length" class="panel-body">
+                            <ul class="list-group">
+                                <li class="list-group-item" v-for="(step, index) in steps" v-if="step.completed" @dblclick="edit(step)">
+                                    <table class="table" style="margin-bottom: 0">
+                                        <tr>
+                                            <td>
+                                                <span>{{ step.name }}</span><!-- 这里注意，双击事件是dblclick -->
+                                            </td>
+                                            <td>
+                                                <input class="form-control" type="text" @keyup.esc="exit(step)" @keyup.enter="updateStep(step)" v-if="step.editStatus" v-model="step.name" v-focus="focusStatus">
+                                            </td>
+                                            <td>
+                                             <span class="pull-right">
+                                                 <i class="fa fa-close pull-right" @click="remove(step)"></i>
+                                                 <i class="fa fa-check pull-right" @click="toggleComplete(step)"></i>
+                                             </span>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </template>
     
     <script>
         export default {
-            mounted() {
-                console.log('Component index.')
-            },
             data() {
                 return {
-                    message:'sdsdfasdf!'
+                    steps:[
+                        {name:'',completed:false,editStatus:false}
+                    ],
+                    newStep:'',
+                    focusStatus:false,//为用来操作input修改框是否获取焦点的状态做准备。
+                    oldName:'',//用来记录修改前的step的名字，以便点击esc取消时还原原来的数据。
+                    baseUrl: top.location + '/step/' //top.location是jquery的获取当前浏览器url的命令
+                }
+            },
+            computed: {
+                todoSteps() {//获取未完成步骤
+                    return this.steps.filter(function (step) {
+                        return !step.completed
+                    })
+                },
+                doneSteps() {//获取已完成步骤
+                    return this.steps.filter(function (step) {
+                        return step.completed
+                    })
+                }
+            },
+            mounted() {//一加载就提取数据
+                this.fetchSteps();
+            },
+            methods: {
+                edit(step) {//实现双击后的显示input修改框，并且将当前的name写入input框，并获得焦点。
+                    this.steps.filter(function (step) {
+                        return step.editStatus = false;
+                    });
+                    step.editStatus = true;
+                    this.focusStatus = true;
+                    this.oldName = step.name;
+                },
+                updateStep(step) {//实现回车后将修改数据提交给数据库保存，并让input输入框消失。（使用axios.put也行）
+                    axios.patch(this.baseUrl+ step.id,{name:step.name}).then(function (response) {
+                        console.log(response);
+                        step.editStatus = false;
+                        this.focusStatus = false;
+                    }.bind(this));
+                },
+                exit(step) {//实现点击esc退出当前的修改框即放弃修改
+                    step.editStatus = false;
+                    this.focusStatus = false;
+                    step.name = this.oldName;
+                },
+                addStep() {//实现点击回车，添加数据到数据库
+                    axios.post(this.baseUrl,{name:this.newStep}).then(function (response) {
+                        //this.steps.push({name:this.newStep,completed:false,editStatus:false});//注意，这里不能用这样，因为如果这样的话没有加载新的数据，在更新的时候回报错而更新不了
+                        this.newStep = '';
+                        this.fetchSteps();//需要使用它来重新加载一下数据
+                    }.bind(this));
+                },
+                fetchSteps() {//从数据库中获取steps的数据
+                    axios(this.baseUrl).then(function(response){
+                        this.steps = response.data;
+                    }.bind(this))
+                },
+                remove(step) {
+                    var index = this.steps.indexOf(step);
+                    axios.delete(this.baseUrl+ step.id).then(function(response){
+                        this.steps.splice(index,1);
+                    }.bind(this))
+                },
+                toggleComplete(step) {
+                    axios.patch(this.baseUrl + step.id +'/toggleComplete').then(function (response) {
+                        step.completed = !step.completed;
+                    });
+                },
+                completeAll() { //标记完成所有任务
+                    axios.post(this.baseUrl +'complete').then(function (response) {
+                        this.steps.forEach(function (step) {  //标记完成所有任务用forEach来解决，但是也可以用this.fetchSteps();来重新提取数据，因为在数据库里面已经改变过来了
+                            step.completed = true;
+                        })
+                    }.bind(this));
+                },
+                clearCompleted() {
+    //                this.steps.forEach(function (step) {  //这个方法不太好，因为请求太多次了，而且容易出现错误
+    //                    if (step.completed) this.remove(step)
+    //                }.bind(this))
+    
+                    axios.post(this.baseUrl +'clear').then(function (response) {
+                        this.fetchSteps();
+                    }.bind(this))
+                }
+            },
+            directives: {
+                focus: { //这里与的focus与input里面的v-focus对应
+                    inserted:function (el,{value}) { //这里的value就是input里面v-focus='step.focusStatus'的focusStatus对应，同时这里要用update也要注意
+                        if (value) el.focus()  //判断focusStatus是否为true，是就获得了焦点
+                    }
                 }
             }
         }
     </script>
-    <style>
-            //用来实现html的具体样式，这个可以不要。
-    </style>
 ### ⑤、到app.js里面注册刚才创建的index.vue，通过如下代码实现，以便show.blade.php调用：
     Vue.component('steps', require('./components/steps/index.vue'));
 ### ⑥、到show.blade.php里面调用index.vue，即只要在需要的位置添加如下代码即可实现：
@@ -1644,10 +1802,10 @@
     <li class="list-group-item" v-for="(step, index) in steps" v-if="!step.completed">
          {{ step.name }}
     </li>
-### ②、实现双击列表<li>时，input的值为当前列的step.name,并且获得焦点：
+### ②、实现双击列表li时，input的值为当前列的step.name,并且获得焦点：
 #### 首先：在data()里面添加如下代码：
     focusStatus:false //添加一个是否获取焦点的状态参数focusStatus，默认为没有获得焦点
-#### 其次：在<li>里面添加如下代码：
+#### 其次：在li里面添加如下代码：
     @dblclick="edit(step)"//表示双击修改，这里需要注意是dblclick，不是dbclick
 #### 然后：在methods里面写edit(step)方法：
     edit(step) {
@@ -1670,4 +1828,87 @@
     }
 #### 最后：在input里面添加如下代码：
     v-focus="focusStatus"
-### ③、
+### ③、通过axios实现与数据库的交互--获取所有steps：
+#### 首先创建Step Model 及 steps表，执行如下命令：
+    php artisan make:model Step -m
+#### 修改生成的steps表蓝图文件，内容为(不要忘记给steps表添加数据哦！)：
+    public function up()
+    {
+        Schema::create('steps', function (Blueprint $table) {
+            $table->increments('id');
+            $table->unsignedInteger('task_id');
+            $table->string('name');
+            $table->boolean('completed')->default(false);
+            $table->timestamps();
+        });
+    }
+#### Step Model的内容为：
+    class Step extends Model
+    {
+        protected $fillable = ['name','completed'];
+    
+        public function Task()
+        {
+            return $this->belongsTo('App\Task');
+        }
+    }
+#### 同时需要到Task Model里面添加如下内容：
+    public function steps()
+    {
+        return $this->hasMany('App\Step');
+    }
+#### 执行如下命令，将steps表写入数据库中：
+    php artisan migrate
+#### 生成StepController,并同时生成资源路由：
+    php artisan make:controller StepController --resource
+#### 到web.php路由文件注册路由：
+    Route::resource('task.step','StepController');//注意这里是用了双重resource路由'task.step'，rul的格式就是：task/{task}/step/{step}
+#### 进入StepController修改index()方法：
+    public function index($id)
+    {
+        $steps = Task::findOrFail($id)->steps;//注意，这里是steps不是steps();
+        return $steps;//这里我们直接返回数据，不需要返回视图
+    }
+#### 但是这时访问task.app/task/1/step会发现，completed字段的值显示为0，而不是我们所需要的false实现方法是在Step Model里面添加如下代码：
+    public function getCompletedAttribute($value)
+    {
+        if ($value) return $this->completed = true;
+        return $this->completed = false;
+    }
+#### 现在数据准备好了，那么就到index.vue文件里面讲steps数据改为：
+    原数据：
+    steps:[
+        {name:'first',completed:false,editStatus:false},
+        {name:'second',completed:false,editStatus:false},
+        {name:'third',completed:true,editStatus:false},
+        {name:'fourth',completed:false,editStatus:false},
+    ],
+    改为：
+    steps：[{name:'',completed:false,editStatus:false}]//只保留一个结构即可。
+#### 添加mounted()：
+    mounted() {
+        this.fetchSteps();
+    },
+#### 在methods里添加fetchSteps()方法：
+    fetchSteps() {//从数据库中获取steps的数据
+        axios('/task/1/step').then(function(response){  //'/task/1/step'这就是上面获取数据的地址
+            this.steps = response.data;
+        }.bind(this))  //这里一定要绑定this不然要报错找不到steps。
+    }
+### ④、通过axios实现与数据库的交互--添加新的step： 
+#### 首先修改index.vue的addStep()方法：
+    addStep() {
+        axios.post('/task/1/step',{name:this.newStep}).then(function (response) {
+            this.steps.push({name:this.newStep,completed:false,editStatus:false});
+            this.newStep = '';
+        }.bind(this));
+    },
+#### 修改StepController.php的store()方法：
+    public function store($id,Request $request)
+    {
+        Task::findOrFail($id)->steps()->create([
+            'name'=>$request->name
+        ]);
+    }
+### ⑤、通过axios实现与数据库的交互--修改step：
+    

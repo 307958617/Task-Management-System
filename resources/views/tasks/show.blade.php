@@ -4,6 +4,7 @@
 @endsection
 @section('content')
     <div class="container">
+        <h1>Task:{{ $task->name }}</h1>
         <steps></steps>
     </div>
 @endsection
