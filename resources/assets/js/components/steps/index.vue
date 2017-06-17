@@ -21,7 +21,7 @@
                     </div>
                     <div v-if="todoSteps.length" class="panel-body">
                         <ul class="list-group">
-                            <li class="list-group-item" v-for="(step, index) in steps" v-if="!step.completed" @dblclick="edit(step)">
+                            <li class="list-group-item animated" :class="[!step.completed?'fadeInRight':'']" v-for="(step, index) in steps" v-if="!step.completed" @dblclick="edit(step)">
                                 <table class="table" style="margin-bottom: 0">
                                     <tr>
                                         <td>
@@ -53,7 +53,7 @@
                     </div>
                     <div v-if="doneSteps.length" class="panel-body">
                         <ul class="list-group">
-                            <li class="list-group-item" v-for="(step, index) in steps" v-if="step.completed" @dblclick="edit(step)">
+                            <li v-for="(step, index) in steps" class="list-group-item animated" :class="[step.completed?' fadeInLeft':'']" v-if="step.completed" @dblclick="edit(step)">
                                 <table class="table" style="margin-bottom: 0">
                                     <tr>
                                         <td>
@@ -177,3 +177,7 @@
         }
     }
 </script>
+
+<style>
+
+</style>

@@ -12,6 +12,7 @@
 
     <!-- Styles -->
     <link href="{{ asset('css/app.css') }}" rel="stylesheet">
+    <link href="https://cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.css" rel="stylesheet">
     @yield('css')
 </head>
 <body>
@@ -41,6 +42,8 @@
                         <li class="{{ url()->current()==route('task.index')?'active':'' }}"><a href="{{ route('task.index') }}">Task</a></li>
                         <li class="{{ url()->current()==route('chart.index')?'active':'' }}"><a href="{{ route('chart.index') }}">Chart</a></li>
                     </ul>
+                    <!-- 搜索框 -->
+                    <search></search>
 
                     <!-- Right Side Of Navbar -->
                     <ul class="nav navbar-nav navbar-right">

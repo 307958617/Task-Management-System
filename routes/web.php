@@ -25,6 +25,7 @@ Route::resource('project','ProjectController');
 
 Route::patch('task/{task}/check',['as'=>'task.check','uses'=>'TaskController@check']);
 
+Route::get('task/searchApi','TaskController@searchApi')->name('task.searchApi');
 Route::resource('task','TaskController');
 
 Route::resource('task.step','StepController');//注意这里是用了双重resource路由'task.step'，rul的格式就是：task/{task}/step/{step}

@@ -36,3 +36,13 @@ label[for="createTask"].control-label {
 .icon-cell {
   width: 22px;
 }
+
+.navbar-default{
+  height: 50px;
+}
+
+ul.list-group.search {
+  height: 30em;
+  overflow: auto;
+  position: absolute;
+}

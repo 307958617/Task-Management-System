@@ -111,4 +111,9 @@ class TaskController extends Controller
         $task->save();
         return back();
     }
+
+    public function searchApi()
+    {
+        return Auth::user()->tasks;
+    }
 }

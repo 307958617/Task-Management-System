@@ -1589,7 +1589,7 @@
         return view('tasks.show');
     }
 ### ③、在resources\assets\js\components目录下创建一个steps文件夹，用来存放于steps有关的vue组件；
-### ④、在resources\assets\js\components\steps目录下创建index.vue来实现steps的增删改查功能,vue的基本结构为：
+### ④、在resources\assets\js\components\steps目录下创建index.vue来实现steps的增删改查功能,vue.index的最终代码为：
     <template>
         <div class="container">
             <div class="row">
@@ -1910,5 +1910,139 @@
             'name'=>$request->name
         ]);
     }
-### ⑤、通过axios实现与数据库的交互--修改step：
+### 其他方法也是一样的步骤。
+### 那么最后step相关的路由代码为：
+    Route::resource('task.step','StepController');//注意这里是用了双重resource路由'task.step'，rul的格式就是：task/{task}/step/{step}
+    Route::patch('task/{task}/step/{step}/toggleComplete','StepController@toggleComplete');//给完成步骤和取消完成步骤添加路由，因为resource路由没有这个方法
+    Route::post('task/{task}/step/complete','StepController@completeAll');//给完成所有步骤添加路由，因为resource路由没有这个方法
+    Route::post('task/{task}/step/clear','StepController@clearCompleted');//给清除所有已完成的步骤添加路由，因为resource路由没有这个方法
+### 最后StepController的代码为：
+    <?php
+  
+    namespace App\Http\Controllers;
     
+    use App\Step;
+    use App\Task;
+    use Illuminate\Http\Request;
+    
+    class StepController extends Controller
+    {
+        public function index($id)
+        {
+            $steps = Task::findOrFail($id)->steps;
+            return $steps;
+        }
+
+        public function store($id,Request $request)
+        {
+            Task::findOrFail($id)->steps()->create([
+                'name'=>$request->name
+            ]);
+        }
+        
+        public function update($taskID,Request $request, $id)
+        {
+            $step = Step::findOrFail($id);
+            $step->update([
+                'name' => $request->name
+            ]);
+        }
+    
+        public function destroy($taskID,$id)
+        {
+            Step::findOrFail($id)->delete();
+        }
+    
+        public function toggleComplete($taskID,$id)
+        {
+            $step = Step::findOrFail($id);
+            $step->update([
+                'completed' => !$step->completed
+            ]);
+        }
+    
+        public function completeAll($taskID)
+        {
+            Task::findOrFail($taskID)->steps()->update([
+                'completed' => 1
+            ]);
+        }
+    
+        public function clearCompleted($taskID)
+        {
+            Task::findOrFail($taskID)->steps()->where('completed',1)->delete();
+        }
+    }
+# 步骤九、实现在vue.js引入animate.css动画效果：
+## 到tasks\show.blade.php里面引入animate.css的CDN
+    @section('css')
+        <link href="https://cdn.bootcss.com/animate.css/3.5.2/animate.css" rel="stylesheet">
+    @endsection
+## 然后到index.vue里面的相应位置添加如下代码，当然前面的class必须加入：class="animated"：
+    
+    :class="[step.completed?'fadeInRight':'']"
+    或
+    :class="{'fadeInRight':step.completed}"
+# 步骤十、实现类似百度检索的功能，实现搜索站内资源的效果（以收索task为例）：
+## 1、在导航栏上添加搜索框代码如下：
+    <div>
+        <form class="navbar-form navbar-left" role="search">
+            <div class="form-group">
+                <div class="input-group">
+                    <input type="text" class="form-control" placeholder="Search">
+                    <div class="input-group-addon"><i class="fa fa-search"></i></div>
+                </div>
+            </div>
+        </form>
+    </div>
+## 2、到web.php路由文件里面定义一条返回所有Task数据的路由：
+    Route::get('task/searchApi','TaskController@searchApi')->name('task.searchApi');//注意，这条路由需要放到Route::resource('task','TaskController');的前面，否则报错                                                                                               
+## 3、到TaskController里面添加searchApi()方法如下：
+    public function searchApi()
+    {
+        return Auth::user()->tasks;
+    }
+## 4、如何通过vue.js实现搜索的效果，那吗就考虑到使用vue组件，将第1步里面的代码放到vue组件里面，然后在vue里面写具体实现过程：
+### ①、在assets\js\components里面创建search.vue文件，内容为：
+    
+### ②、到assets\js\app.js里面注册一个search组件：
+    Vue.component('search', require('./components/search.vue'));
+### ③、将第1步里面的代码换成如下：
+    <search></search>
+### ④、实现输入框获取焦点就弹出所有tasks的一个列表，为了解决弹出的列表将导航条撑开，给导航条设置一个固定高度即可
+    到assets\sass\styles.scss里面添加如下代码，然后编译即可：
+    .navbar-default{
+      height: 50px;
+    }
+### ⑤、但是这里又出来一个问题，导航条没撑开，但是将内容撑开了，怎么办？列表太长了怎么办？
+    只要将列表框设置一个固定高度即可：
+    到assets\sass\styles.scss里面添加如下代码，然后编译即可：
+    ul.list-group.search {
+      height: 30em;//解决因为task内容太多而列表太长的问题
+      overflow: auto;//显示一个滚动条出来
+      position: absolute;//解决将内容撑开了的问题
+    }
+### ⑥、使列表框失去焦点时自动消失：
+    首先：在input中添加一个失去焦点的事件触发：@blur="unFocus"
+    然后在methods方法里面添加：
+    unFocus() {
+        setTimeout(function () {//设置延时执行的动作
+            this.tasks= [];
+        }.bind(this),1000)
+    }
+### ⑦、注意，这里面有个坑，就是vue2.0里面动态链接的写法必须如下才可以：
+    <a :href="'/task/'+ task.id">  //不能直接<a href="/task/{{ task.id }}">
+        {{ task.name }}.{{task.id}}
+    </a>
+### ⑧、实现在输入框输入数据过滤弹出的列表里面内容的方法，只要写一个computed即可：
+    首先：在input里面绑定输入框 v-model="searchString"
+    然后：v-for需要改变一下
+    v-for="task in searchForTasks"
+    其次：写computed计算属性
+    computed:{
+        searchForTasks(){
+            return this.tasks.filter(function (task) {
+                return task.name.toLowerCase().indexOf(this.searchString.trim().toLowerCase()) !== -1 ;
+            }.bind(this))
+        }
+    },
